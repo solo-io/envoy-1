@@ -142,7 +142,10 @@ InstanceImpl::~InstanceImpl() {
   dispatcher_->shutdown();
 }
 
-Upstream::ClusterManager& InstanceImpl::clusterManager() { return *config_.clusterManager(); }
+Upstream::ClusterManager& InstanceImpl::clusterManager() {
+  ASSERT(config_.clusterManager() != nullptr);
+  return *config_.clusterManager();
+}
 
 void InstanceImpl::drainListeners() {
   ENVOY_LOG(info, "closing and draining listeners");
@@ -567,6 +570,11 @@ void InstanceImpl::initialize(const Options& options,
     // Just setup the timer.
     stat_flush_timer_ = dispatcher_->createTimer([this]() -> void { flushStats(); });
     stat_flush_timer_->enableTimer(stats_config.flushInterval());
+  }
+
+  // Now that we are initialized, notify the bootstrap extensions.
+  for (auto&& bootstrap_extension : bootstrap_extensions_) {
+    bootstrap_extension->onServerInitialized();
   }
 
   // GuardDog (deadlock detection) object and thread setup before workers are
