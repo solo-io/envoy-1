@@ -63,6 +63,8 @@ Bug Fixes
 * xray: fix the default sampling rate for AWS X-Ray tracer extension to be 5% as opposed to 50%.
 * zipkin: fix timestamp serialization in annotations. A prior bug fix exposed an issue with timestamps being serialized as strings.
 
+* ext_authz: fix the ext_authz filter to correctly merge multiple same headers using the ',' as separator in the check request to the external authorization service.
+
 Removed Config or Runtime
 -------------------------
 *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`
