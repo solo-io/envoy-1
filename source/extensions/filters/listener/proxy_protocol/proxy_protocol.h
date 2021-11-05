@@ -60,8 +60,14 @@ public:
    */
   size_t numberOfNeededTlvTypes() const;
 
+  /**
+   * Whether or not we try to auto detect. TODO(kdorosh) improve me
+   */
+  bool detectProxyProtocol() const;
+
 private:
   absl::flat_hash_map<uint8_t, KeyValuePair> tlv_types_;
+  bool detect_proxy_protocol_{};
 };
 
 using ConfigSharedPtr = std::shared_ptr<Config>;
@@ -118,6 +124,8 @@ private:
   bool parseV2Header(char* buf);
   absl::optional<size_t> lenV2Address(char* buf);
 
+  ReadOrParseState resetAndContinue(Network::IoHandle& io_handle);
+
   Network::ListenerFilterCallbacks* cb_{};
 
   // The offset in buf_ that has been fully read
@@ -130,6 +138,7 @@ private:
 
   // Stores the portion of the first line that has been read so far.
   char buf_[MAX_PROXY_PROTO_LEN_V2];
+  char throwaway_[MAX_PROXY_PROTO_LEN_V2];
 
   /**
    * Store the extension TLVs if they need to be read.
