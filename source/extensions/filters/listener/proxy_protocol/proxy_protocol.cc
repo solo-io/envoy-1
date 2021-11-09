@@ -451,7 +451,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       std::cout << "no bytes read2\n";
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes read)");
       return ReadOrParseState::Error;
-    } else if (config_.get()->detectProxyProtocol() && nread < PROXY_PROTO_V2_HEADER_LEN) {
+    } else if (nread < PROXY_PROTO_V2_HEADER_LEN && config_.get()->detectProxyProtocol()) {
       std::cout << "not enough bytes\n";
       ENVOY_LOG(debug, "need more bytes to read proxy protocol");
       return ReadOrParseState::Error; //TODO(kdorosh) try again?

@@ -232,29 +232,8 @@ TEST_P(ProxyProtocolTest, DetectNoProxyProtocol) {
 
   expectData("more data");
 
-  // TODO(kdorosh): make more assertions?
-  // if (GetParam() == Envoy::Network::Address::IpVersion::v4) {
-  //   EXPECT_EQ(server_connection_->connectionInfoProvider().remoteAddress()->ip()->addressAsString(),
-  //             "127.0.0.1");
-  // } else {
-  //   EXPECT_EQ(server_connection_->connectionInfoProvider().remoteAddress()->ip()->addressAsString(),
-  //             "::1");
-  // }
-  // EXPECT_FALSE(server_connection_->connectionInfoProvider().localAddressRestored());
-
   disconnect();
 }
-
-// TEST_P(ProxyProtocolTest, FailNoProxyProtocol) {
-
-//   envoy::extensions::filters::listener::proxy_protocol::v3::ProxyProtocol proto_config;
-//   proto_config.set_detect_proxy_protocol(false);
-//   connect(false, &proto_config);
-
-//   write("more data");
-
-//   expectProxyProtoError();
-// }
 
 TEST_P(ProxyProtocolTest, V1Minimal) {
   connect();
