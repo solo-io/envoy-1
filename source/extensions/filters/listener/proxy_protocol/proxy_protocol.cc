@@ -91,14 +91,11 @@ void Filter::onRead() {
   const ReadOrParseState read_state = onReadWorker();
   if (read_state == ReadOrParseState::Error) {
     if (config_.get()->detectProxyProtocol()) {
-      // TODO(kdorosh) for now we assume all errors are empty bytes errors
       // TODO(kdorosh) add metric?
-      std::cout << "KDKD true case\n";
-      //config_->stats_.downstream_cx_proxy_proto_error_.inc();
-      //cb_->continueFilterChain(false);
+      std::cout << "resetting and continuing filter chain\n";
       resetAndContinue(cb_->socket().ioHandle());
     } else {
-      std::cout << "KDKD else case\n";
+      std::cout << "encountered an error, inc metric\n";
       config_->stats_.downstream_cx_proxy_proto_error_.inc();
       cb_->continueFilterChain(false);
     }
@@ -460,8 +457,6 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       return ReadOrParseState::Error; //TODO(kdorosh) try again?
     }
 
-    //buf_off_ += nread; // new!
-
     if (buf_off_ + nread >= PROXY_PROTO_V2_HEADER_LEN) {
       const char* sig = PROXY_PROTO_V2_SIGNATURE;
       std::cout << "buffer:" << buf_ << "end buffer\n";
@@ -518,12 +513,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
         // The TLV remain, they are read/discard in parseExtensions() which is called from the
         // parent (if needed).
         if (parseV2Header(buf_)) {
-
-          std::cout << "throwaway bytes v2\n";
-          //const auto result = io_handle.recv(throwaway_, nread, 0);
-          //nread = result.return_value_;
-          //ASSERT(result.ok() && size_t(nread) == missing);
-
+          std::cout << "parsed v2 header, returning done\n";
           return ReadOrParseState::Done;
         } else {
           return ReadOrParseState::Error;
@@ -566,8 +556,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       } else {
         ntoread = search_index_ - buf_off_;
       }
-      std::cout << "read bytes, hoped i would not\n";
-      //return ReadOrParseState::Error;
+      std::cout << "read bytes, after peek\n";
       const auto result = io_handle.recv(buf_ + buf_off_, ntoread, 0);
       nread = result.return_value_;
       ASSERT(result.ok() && size_t(nread) == ntoread);
@@ -575,16 +564,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       buf_off_ += nread;
 
       if (header_version_ == V1) {
-
         std::cout << "header version is v1, in conditional\n";
-
-        // consume the bytes now that we don't need to peek
-        //const auto result = io_handle.recv(throwaway_, ntoread, 0);
-        // nread = result.return_value_;
-        // ASSERT(result.ok() && size_t(nread) == ntoread);
-
-        //buf_off_ += nread;
-
         if (parseV1Header(buf_, buf_off_)) {
           return ReadOrParseState::Done;
         } else {

@@ -138,7 +138,6 @@ private:
 
   // Stores the portion of the first line that has been read so far.
   char buf_[MAX_PROXY_PROTO_LEN_V2];
-  char throwaway_[MAX_PROXY_PROTO_LEN_V2];
 
   /**
    * Store the extension TLVs if they need to be read.

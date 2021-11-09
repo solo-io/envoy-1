@@ -245,16 +245,16 @@ TEST_P(ProxyProtocolTest, DetectNoProxyProtocol) {
   disconnect();
 }
 
-TEST_P(ProxyProtocolTest, FailNoProxyProtocol) {
+// TEST_P(ProxyProtocolTest, FailNoProxyProtocol) {
 
-  envoy::extensions::filters::listener::proxy_protocol::v3::ProxyProtocol proto_config;
-  proto_config.set_detect_proxy_protocol(false);
-  connect(false, &proto_config);
+//   envoy::extensions::filters::listener::proxy_protocol::v3::ProxyProtocol proto_config;
+//   proto_config.set_detect_proxy_protocol(false);
+//   connect(false, &proto_config);
 
-  write("more data");
+//   write("more data");
 
-  expectProxyProtoError();
-}
+//   expectProxyProtoError();
+// }
 
 TEST_P(ProxyProtocolTest, V1Minimal) {
   connect();
