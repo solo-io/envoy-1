@@ -90,15 +90,12 @@ ReadOrParseState Filter::resetAndContinue(Network::IoHandle& io_handle) {
 void Filter::onRead() {
   const ReadOrParseState read_state = onReadWorker();
   if (read_state == ReadOrParseState::Error) {
-    if (config_.get()->detectProxyProtocol()) {
-      // TODO(kdorosh) add metric?
-      std::cout << "resetting and continuing filter chain\n";
-      resetAndContinue(cb_->socket().ioHandle());
-    } else {
-      std::cout << "encountered an error, inc metric\n";
-      config_->stats_.downstream_cx_proxy_proto_error_.inc();
-      cb_->continueFilterChain(false);
-    }
+    std::cout << "encountered an error, inc metric\n";
+    config_->stats_.downstream_cx_proxy_proto_error_.inc();
+    cb_->continueFilterChain(false);
+  } else if (read_state == ReadOrParseState::SkipFilterError) {
+    std::cout << "resetting and continuing filter chain\n";
+    resetAndContinue(cb_->socket().ioHandle());
   }
 }
 
@@ -454,7 +451,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
     } else if (nread < PROXY_PROTO_V2_HEADER_LEN && config_.get()->detectProxyProtocol()) {
       std::cout << "not enough bytes\n";
       ENVOY_LOG(debug, "need more bytes to read proxy protocol");
-      return ReadOrParseState::Error; //TODO(kdorosh) try again?
+      return ReadOrParseState::SkipFilterError;
     }
 
     if (buf_off_ + nread >= PROXY_PROTO_V2_HEADER_LEN) {
