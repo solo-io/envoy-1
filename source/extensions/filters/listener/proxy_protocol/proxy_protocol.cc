@@ -440,8 +440,6 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
     const auto result =
         io_handle.recv(buf_ + buf_off_, MAX_PROXY_PROTO_LEN_V2 - buf_off_, MSG_PEEK);
 
-    // if 12 bytes return and enabled
-
     if (!result.ok()) {
       if (result.err_->getErrorCode() == Api::IoError::IoErrorCode::Again) {
         return ReadOrParseState::TryAgainLater;
@@ -456,6 +454,10 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       std::cout << "no bytes read2\n";
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes read)");
       return ReadOrParseState::Error;
+    } else if (config_.get()->detectProxyProtocol() && nread < PROXY_PROTO_V2_HEADER_LEN) {
+      std::cout << "not enough bytes\n";
+      ENVOY_LOG(debug, "need more bytes to read proxy protocol");
+      return ReadOrParseState::Error; //TODO(kdorosh) try again?
     }
 
     //buf_off_ += nread; // new!
@@ -566,7 +568,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       }
       std::cout << "read bytes, hoped i would not\n";
       //return ReadOrParseState::Error;
-      const auto result = io_handle.recv(buf_ + buf_off_, ntoread, MSG_PEEK);
+      const auto result = io_handle.recv(buf_ + buf_off_, ntoread, 0);
       nread = result.return_value_;
       ASSERT(result.ok() && size_t(nread) == ntoread);
 
@@ -577,7 +579,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
         std::cout << "header version is v1, in conditional\n";
 
         // consume the bytes now that we don't need to peek
-        const auto result = io_handle.recv(throwaway_, ntoread, 0);
+        //const auto result = io_handle.recv(throwaway_, ntoread, 0);
         // nread = result.return_value_;
         // ASSERT(result.ok() && size_t(nread) == ntoread);
 

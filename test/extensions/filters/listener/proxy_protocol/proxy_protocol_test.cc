@@ -222,7 +222,7 @@ TEST_P(ProxyProtocolTest, V1Basic) {
   disconnect();
 }
 
-TEST_P(ProxyProtocolTest, NoProxyProtocol) {
+TEST_P(ProxyProtocolTest, DetectNoProxyProtocol) {
 
   envoy::extensions::filters::listener::proxy_protocol::v3::ProxyProtocol proto_config;
   proto_config.set_detect_proxy_protocol(true);
@@ -243,6 +243,17 @@ TEST_P(ProxyProtocolTest, NoProxyProtocol) {
   // EXPECT_FALSE(server_connection_->connectionInfoProvider().localAddressRestored());
 
   disconnect();
+}
+
+TEST_P(ProxyProtocolTest, FailNoProxyProtocol) {
+
+  envoy::extensions::filters::listener::proxy_protocol::v3::ProxyProtocol proto_config;
+  proto_config.set_detect_proxy_protocol(false);
+  connect(false, &proto_config);
+
+  write("more data");
+
+  expectProxyProtoError();
 }
 
 TEST_P(ProxyProtocolTest, V1Minimal) {
