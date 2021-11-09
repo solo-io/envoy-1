@@ -61,7 +61,8 @@ public:
   size_t numberOfNeededTlvTypes() const;
 
   /**
-   * Whether or not we try to auto detect. TODO(kdorosh) improve me
+   * Filter configuration that determines if we should pass-through failed proxy protocol
+   * requests. Should only be configured to true for trusted downstreams.
    */
   bool detectProxyProtocol() const;
 
@@ -104,7 +105,8 @@ private:
   /**
    * Helper function that attempts to read the proxy header
    * (delimited by \r\n if V1 format, or with length if V2)
-   * @return bool true valid header, false if more data is needed or socket errors occurred.
+   * @return ReadOrParseState Done if successfully parsed, TryAgainLater for
+   * retryable io errors, or the error type.
    */
   ReadOrParseState readProxyHeader(Network::IoHandle& io_handle);
 
