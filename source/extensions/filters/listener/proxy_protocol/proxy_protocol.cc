@@ -318,7 +318,7 @@ ReadOrParseState Filter::parseExtensions(Network::IoHandle& io_handle, uint8_t* 
     const auto recv_result = io_handle.recv(buf, to_read, 0);
     if (!recv_result.ok()) {
       if (recv_result.err_->getErrorCode() == Api::IoError::IoErrorCode::Again) {
-        return ReadOrParseState::TryAgainLater;
+        return ReadOrParseState::TryAgainLaterError;
       }
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes avail)");
       return ReadOrParseState::Error;
@@ -433,7 +433,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
 
     if (!result.ok()) {
       if (result.err_->getErrorCode() == Api::IoError::IoErrorCode::Again) {
-        return ReadOrParseState::TryAgainLater;
+        return ReadOrParseState::TryAgainLaterError;
       }
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes read)");
       return ReadOrParseState::Error;

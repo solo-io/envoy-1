@@ -75,7 +75,7 @@ using ConfigSharedPtr = std::shared_ptr<Config>;
 
 enum ProxyProtocolVersion { Unknown = -1, InProgress = -2, V1 = 1, V2 = 2 };
 
-enum class ReadOrParseState { Done, TryAgainLater, Error, SkipFilterError };
+enum class ReadOrParseState { Done, TryAgainLaterError, Error, SkipFilterError };
 
 /**
  * Implementation the PROXY Protocol listener filter
@@ -105,8 +105,7 @@ private:
   /**
    * Helper function that attempts to read the proxy header
    * (delimited by \r\n if V1 format, or with length if V2)
-   * @return ReadOrParseState Done if successfully parsed, TryAgainLater for
-   * retryable io errors, or the error type.
+   * @return ReadOrParseState Done if successfully parsed, or the error type.
    */
   ReadOrParseState readProxyHeader(Network::IoHandle& io_handle);
 
