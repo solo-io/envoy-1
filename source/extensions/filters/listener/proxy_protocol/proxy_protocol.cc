@@ -90,11 +90,9 @@ ReadOrParseState Filter::resetAndContinue(Network::IoHandle& io_handle) {
 void Filter::onRead() {
   const ReadOrParseState read_state = onReadWorker();
   if (read_state == ReadOrParseState::Error) {
-    std::cout << "encountered an error, inc metric\n";
     config_->stats_.downstream_cx_proxy_proto_error_.inc();
     cb_->continueFilterChain(false);
   } else if (read_state == ReadOrParseState::SkipFilterError) {
-    std::cout << "resetting and continuing filter chain\n";
     resetAndContinue(cb_->socket().ioHandle());
   }
 }
@@ -430,7 +428,6 @@ ReadOrParseState Filter::readExtensions(Network::IoHandle& io_handle) {
 
 ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
   while (buf_off_ < MAX_PROXY_PROTO_LEN_V2) {
-    std::cout << "print out buff_off_: " << buf_off_ << "\n";
     const auto result =
         io_handle.recv(buf_ + buf_off_, MAX_PROXY_PROTO_LEN_V2 - buf_off_, MSG_PEEK);
 
@@ -438,38 +435,31 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       if (result.err_->getErrorCode() == Api::IoError::IoErrorCode::Again) {
         return ReadOrParseState::TryAgainLater;
       }
-      std::cout << "no bytes read1\n";
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes read)");
       return ReadOrParseState::Error;
     }
     ssize_t nread = result.return_value_;
 
     if (nread < 1) {
-      std::cout << "no bytes read2\n";
       ENVOY_LOG(debug, "failed to read proxy protocol (no bytes read)");
       return ReadOrParseState::Error;
     } else if (nread < PROXY_PROTO_V2_HEADER_LEN && config_.get()->detectProxyProtocol()) {
-      std::cout << "not enough bytes\n";
       ENVOY_LOG(debug, "need more bytes to read proxy protocol");
       return ReadOrParseState::SkipFilterError;
     }
 
     if (buf_off_ + nread >= PROXY_PROTO_V2_HEADER_LEN) {
       const char* sig = PROXY_PROTO_V2_SIGNATURE;
-      std::cout << "buffer:" << buf_ << "end buffer\n";
       if (!memcmp(buf_, sig, PROXY_PROTO_V2_SIGNATURE_LEN)) {
-        std::cout << "header version v2\n";
         header_version_ = V2;
       } else if (memcmp(buf_, PROXY_PROTO_V1_SIGNATURE, PROXY_PROTO_V1_SIGNATURE_LEN)) {
         // It is not v2, and can't be v1, so no sense hanging around: it is invalid
         ENVOY_LOG(debug, "failed to read proxy protocol (exceed max v1 header len)");
-        std::cout << "failed to read proxy protocol, exceed max v1 header len \n";
         return ReadOrParseState::Error;
       }
     }
 
     if (header_version_ == V2) {
-      std::cout << "header version is v2, going into func\n";
       const int ver_cmd = buf_[PROXY_PROTO_V2_SIGNATURE_LEN];
       if (((ver_cmd & 0xf0) >> 4) != PROXY_PROTO_V2_VERSION) {
         ENVOY_LOG(debug, "Unsupported V2 proxy protocol version");
@@ -477,7 +467,6 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       }
       if (buf_off_ < PROXY_PROTO_V2_HEADER_LEN) {
         ssize_t exp = PROXY_PROTO_V2_HEADER_LEN - buf_off_;
-        std::cout << "read exp bytes v2\n";
         const auto read_result = io_handle.recv(buf_ + buf_off_, exp, 0);
         if (!read_result.ok() || read_result.return_value_ != uint64_t(exp)) {
           ENVOY_LOG(debug, "failed to read proxy protocol (remote closed)");
@@ -500,7 +489,6 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       }
       if (ssize_t(buf_off_) + nread >= PROXY_PROTO_V2_HEADER_LEN + addr_len) {
         ssize_t missing = (PROXY_PROTO_V2_HEADER_LEN + addr_len) - buf_off_;
-        std::cout << "read missing bytes v2\n";
         const auto read_result = io_handle.recv(buf_ + buf_off_, missing, 0);
         if (!read_result.ok() || read_result.return_value_ != uint64_t(missing)) {
           ENVOY_LOG(debug, "failed to read proxy protocol (remote closed)");
@@ -510,13 +498,11 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
         // The TLV remain, they are read/discard in parseExtensions() which is called from the
         // parent (if needed).
         if (parseV2Header(buf_)) {
-          std::cout << "parsed v2 header, returning done\n";
           return ReadOrParseState::Done;
         } else {
           return ReadOrParseState::Error;
         }
       } else if (nread != 0) {
-        std::cout << "nread not zero v2\n";
         const auto result = io_handle.recv(buf_ + buf_off_, nread, 0);
         nread = result.return_value_;
         if (!result.ok()) {
@@ -526,16 +512,13 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
         buf_off_ += nread;
       }
     } else {
-      std::cout << "continue searching buf_ from where we left off\n";
       // continue searching buf_ from where we left off
       for (; search_index_ < buf_off_ + nread; search_index_++) {
         if (buf_[search_index_] == '\n' && buf_[search_index_ - 1] == '\r') {
           if (search_index_ == 1) {
             // This could be the binary protocol. It cannot be the ascii protocol
-            std::cout << "assignined header version as in progress\n";
             header_version_ = InProgress;
           } else {
-            std::cout << "assignined header version as v1 and incremented search index\n";
             header_version_ = V1;
             search_index_++;
           }
@@ -553,7 +536,7 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       } else {
         ntoread = search_index_ - buf_off_;
       }
-      std::cout << "read bytes, after peek\n";
+
       const auto result = io_handle.recv(buf_ + buf_off_, ntoread, 0);
       nread = result.return_value_;
       ASSERT(result.ok() && size_t(nread) == ntoread);
@@ -561,11 +544,9 @@ ReadOrParseState Filter::readProxyHeader(Network::IoHandle& io_handle) {
       buf_off_ += nread;
 
       if (header_version_ == V1) {
-        std::cout << "header version is v1, in conditional\n";
         if (parseV1Header(buf_, buf_off_)) {
           return ReadOrParseState::Done;
         } else {
-          std::cout << "failed to parse v1 header \n";
           return ReadOrParseState::Error;
         }
       }
