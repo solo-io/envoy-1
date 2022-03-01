@@ -17,12 +17,14 @@ Http::FilterFactoryCb CacheFilterFactory::createFilterFactoryFromProtoTyped(
     throw EnvoyException(
         fmt::format("Didn't find a registered implementation for type: '{}'", type));
   }
-
-  return [config, stats_prefix, &context,
-          http_cache_factory](Http::FilterChainFactoryCallbacks& callbacks) -> void {
+  
+  http_cache_factory->init(config, context);
+  return [config, stats_prefix, &context, http_cache_factory]
+                        (Http::FilterChainFactoryCallbacks& callbacks) -> void {
+           
     callbacks.addStreamFilter(
-        std::make_shared<CacheFilter>(config, stats_prefix, context.scope(), context.timeSource(),
-                                      http_cache_factory->getCache(config, context)));
+        std::make_shared<CacheFilter>(config, stats_prefix, context.scope(),
+                                            context.timeSource(), http_cache_factory->getCache(config, context)));
   };
 }
 
