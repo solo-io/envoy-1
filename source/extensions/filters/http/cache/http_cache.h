@@ -370,7 +370,7 @@ public:
   std::string category() const override { return "envoy.http.cache"; }
 
   virtual void init(const envoy::extensions::filters::http::cache::v3::CacheConfig& config,
-           Server::Configuration::FactoryContext& context) PURE;
+           Server::Configuration::FactoryContext& context) {};
   // Returns an HttpCache that will remain valid indefinitely (at least as long
   // as the calling CacheFilter).
   //

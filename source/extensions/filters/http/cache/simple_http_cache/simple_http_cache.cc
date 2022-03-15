@@ -300,10 +300,6 @@ public:
                       Server::Configuration::FactoryContext&) override {
     return cache_;
   }
-   void init(const envoy::extensions::filters::http::cache::v3::CacheConfig&,
-                      Server::Configuration::FactoryContext&) override {
-    return;
-  }
 
 private:
   SimpleHttpCache cache_;
