@@ -6,8 +6,8 @@
 
 #include "envoy/common/exception.h"
 
-#include "source/common/common/assert.h"
-#include "source/common/runtime/runtime_features.h"
+#include "common/common/assert.h"
+#include "common/runtime/runtime_features.h"
 
 #include "absl/container/fixed_array.h"
 
