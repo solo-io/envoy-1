@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "source/common/runtime/runtime_features.h"
+#include "common/runtime/runtime_features.h"
 
 namespace Envoy {
 namespace Extensions {
