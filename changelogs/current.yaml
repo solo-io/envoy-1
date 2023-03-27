@@ -4,7 +4,9 @@ behavior_changes:
 # *Changes that are expected to cause an incompatibility if applicable; deployment changes are likely required*
 
 minor_behavior_changes:
-# *Changes that may cause incompatibilities for some users, but should not for most*
+- area: matching
+  change: |
+    Added dynamic metadata to the MatchingData object to enable writing matcher_tree input objects that can parse provided dynamic metadata.
 
 bug_fixes:
 # *Changes expected to improve the state of the world and are unlikely to have negative effects*
@@ -15,6 +17,6 @@ removed_config_or_runtime:
 new_features:
 - area: matching
   change: |
-      added :ref:`Filter State Input <envoy_v3_api_msg_extensions.matching.common_inputs.network.v3.FilterStateInput>` for matching based on filter state objects.
+    added :ref:`Filter State Input <envoy_v3_api_msg_extensions.matching.common_inputs.network.v3.FilterStateInput>` for matching based on filter state objects.
 
 deprecated:

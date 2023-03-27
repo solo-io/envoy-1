@@ -17,7 +17,8 @@ TEST(MatchingData, DestinationIPInput) {
   DestinationIPInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setLocalAddress(
@@ -105,7 +106,8 @@ TEST(MatchingData, DestinationPortInput) {
   DestinationPortInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setLocalAddress(
@@ -130,7 +132,8 @@ TEST(MatchingData, SourceIPInput) {
   SourceIPInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setRemoteAddress(
@@ -155,7 +158,8 @@ TEST(MatchingData, SourcePortInput) {
   SourcePortInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setRemoteAddress(
@@ -180,7 +184,8 @@ TEST(MatchingData, DirectSourceIPInput) {
   DirectSourceIPInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setDirectRemoteAddressForTest(
@@ -205,7 +210,8 @@ TEST(MatchingData, SourceTypeInput) {
   SourceTypeInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     socket.connection_info_provider_->setRemoteAddress(
@@ -230,7 +236,8 @@ TEST(MatchingData, ServerNameInput) {
   ServerNameInput<MatchingData> input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     const auto result = input.get(data);
@@ -253,7 +260,8 @@ TEST(MatchingData, TransportProtocolInput) {
   TransportProtocolInput input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     EXPECT_CALL(socket, detectedTransportProtocol).WillOnce(testing::Return(""));
@@ -277,7 +285,8 @@ TEST(MatchingData, ApplicationProtocolInput) {
   ApplicationProtocolInput input;
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     std::vector<std::string> protocols = {};
@@ -317,7 +326,8 @@ TEST(MatchingData, FilterStateInput) {
 
   MockConnectionSocket socket;
   StreamInfo::FilterStateImpl filter_state(StreamInfo::FilterState::LifeSpan::Connection);
-  MatchingDataImpl data(socket, filter_state);
+  envoy::config::core::v3::Metadata metadata;
+  MatchingDataImpl data(socket, filter_state, metadata);
 
   {
     const auto result = input.get(data);
