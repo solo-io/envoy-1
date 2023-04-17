@@ -939,5 +939,84 @@ TEST(ValidateHeaders, ContentLength) {
   EXPECT_TRUE(should_close_connection);
 }
 
+// NET-NEW 1.22
+// These tests were added in the changes being backported from 1.22
+//// These tests send invalid request and response header names which violate ASSERT while creating
+//// such request/response headers. So they can only be run in NDEBUG mode.
+//#ifdef NDEBUG
+//// These tests send invalid request and response header names which violate ASSERT while creating
+//// such request/response headers. So they can only be run in NDEBUG mode.
+//TEST(ValidateHeaders, ForbiddenCharacters) {
+//  {
+//    // Valid headers
+//    TestRequestHeaderMapImpl headers{
+//        {":method", "CONNECT"}, {":authority", "foo.com:80"}, {"x-foo", "hello world"}};
+//    EXPECT_EQ(Http::okStatus(), HeaderUtility::checkValidRequestHeaders(headers));
+//  }
+//
+//  {
+//    // Mixed case header key is ok
+//    TestRequestHeaderMapImpl headers{{":method", "CONNECT"}, {":authority", "foo.com:80"}};
+//    Http::HeaderString invalid_key(absl::string_view("x-MiXeD-CaSe"));
+//    headers.addViaMove(std::move(invalid_key),
+//                       Http::HeaderString(absl::string_view("hello world")));
+//    EXPECT_TRUE(HeaderUtility::checkValidRequestHeaders(headers).ok());
+//  }
+//
+//  {
+//    // Invalid key
+//    TestRequestHeaderMapImpl headers{
+//        {":method", "CONNECT"}, {":authority", "foo.com:80"}, {"x-foo\r\n", "hello world"}};
+//    EXPECT_NE(Http::okStatus(), HeaderUtility::checkValidRequestHeaders(headers));
+//  }
+//
+//  {
+//    // Invalid value
+//    TestRequestHeaderMapImpl headers{{":method", "CONNECT"},
+//                                     {":authority", "foo.com:80"},
+//                                     {"x-foo", "hello\r\n\r\nGET /evil HTTP/1.1"}};
+//    EXPECT_NE(Http::okStatus(), HeaderUtility::checkValidRequestHeaders(headers));
+//  }
+//}
+//#endif
+// END NET-NEW v1.22
+
+// EXTANT IN 1.22
+// These tests existed prior to the changes being backported from 1.22
+//TEST(ValidateHeaders, ParseCommaDelimitedHeader) {
+//  // Basic case
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader("one,two,three"),
+//              ElementsAre("one", "two", "three"));
+//
+//  // Whitespace at the end or beginning of tokens
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader("one  ,two,three"),
+//              ElementsAre("one", "two", "three"));
+//
+//  // Empty tokens are removed (from beginning, middle, and end of the string)
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader(", one,, two, three,,,"),
+//              ElementsAre("one", "two", "three"));
+//
+//  // Whitespace is not removed from the middle of the tokens
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader("one, two, t  hree"),
+//              ElementsAre("one", "two", "t  hree"));
+//
+//  // Semicolons are kept as part of the tokens
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader("one, two;foo, three"),
+//              ElementsAre("one", "two;foo", "three"));
+//
+//  // Check that a single token is parsed regardless of commas
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader("foo"), ElementsAre("foo"));
+//  EXPECT_THAT(HeaderUtility::parseCommaDelimitedHeader(",foo,"), ElementsAre("foo"));
+//
+//  // Empty string is handled
+//  EXPECT_TRUE(HeaderUtility::parseCommaDelimitedHeader("").empty());
+//
+//  // Empty string is handled (whitespace)
+//  EXPECT_TRUE(HeaderUtility::parseCommaDelimitedHeader("   ").empty());
+//
+//  // Empty string is handled (commas)
+//  EXPECT_TRUE(HeaderUtility::parseCommaDelimitedHeader(",,,").empty());
+//}
+// END EXTANT IN 1.22
 } // namespace Http
 } // namespace Envoy
