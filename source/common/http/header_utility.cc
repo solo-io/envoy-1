@@ -22,6 +22,9 @@ namespace Http {
 struct SharedResponseCodeDetailsValues {
   const absl::string_view InvalidAuthority = "http.invalid_authority";
   const absl::string_view ConnectUnsupported = "http.connect_not_supported";
+  const absl::string_view InvalidMethod = "http.invalid_method";
+  const absl::string_view InvalidPath = "http.invalid_path";
+  const absl::string_view InvalidScheme = "http.invalid_scheme";
 };
 
 using SharedResponseCodeDetails = ConstSingleton<SharedResponseCodeDetailsValues>;
@@ -364,11 +367,35 @@ absl::string_view::size_type HeaderUtility::getPortStart(absl::string_view host)
   return absl::string_view::npos;
 }
 
+constexpr bool isInvalidToken(unsigned char c) {
+  if (c == '!' || c == '|' || c == '~' || c == '*' || c == '+' || c == '-' || c == '.' ||
+      // #, $, %, &, '
+      (c >= '#' && c <= '\'') ||
+      // [0-9]
+      (c >= '0' && c <= '9') ||
+      // [A-Z]
+      (c >= 'A' && c <= 'Z') ||
+      // ^, _, `, [a-z]
+      (c >= '^' && c <= 'z')) {
+    return false;
+  }
+  return true;
+}
+
 absl::optional<std::reference_wrapper<const absl::string_view>>
 HeaderUtility::requestHeadersValid(const RequestHeaderMap& headers) {
   // Make sure the host is valid.
   if (headers.Host() && !HeaderUtility::authorityIsValid(headers.Host()->value().getStringView())) {
     return SharedResponseCodeDetails::get().InvalidAuthority;
+  }
+  if (headers.Method()) {
+    absl::string_view method = headers.Method()->value().getStringView();
+    if (method.empty() || std::any_of(method.begin(), method.end(), isInvalidToken)) {
+      return SharedResponseCodeDetails::get().InvalidMethod;
+    }
+  }
+  if (headers.Scheme() && absl::StrContains(headers.Scheme()->value().getStringView(), ",")) {
+    return SharedResponseCodeDetails::get().InvalidScheme;
   }
   return absl::nullopt;
 }
@@ -541,6 +568,51 @@ HeaderUtility::validateContentLength(absl::string_view header_value,
   }
   content_length_output = content_length.value();
   return HeaderValidationResult::ACCEPT;
+}
+
+std::vector<absl::string_view>
+HeaderUtility::parseCommaDelimitedHeader(absl::string_view header_value) {
+  std::vector<absl::string_view> values;
+  for (absl::string_view s : absl::StrSplit(header_value, ',')) {
+    absl::string_view token = absl::StripAsciiWhitespace(s);
+    if (token.empty()) {
+      continue;
+    }
+    values.emplace_back(token);
+  }
+  return values;
+}
+
+absl::string_view HeaderUtility::getSemicolonDelimitedAttribute(absl::string_view value) {
+  return absl::StripAsciiWhitespace(StringUtil::cropRight(value, ";"));
+}
+
+std::string HeaderUtility::addEncodingToAcceptEncoding(absl::string_view accept_encoding_header,
+                                                       absl::string_view encoding) {
+  // Append the content encoding only if it isn't already present in the
+  // accept_encoding header. If it is present with a q-value ("gzip;q=0.3"),
+  // remove the q-value to indicate that the content encoding setting that we
+  // add has max priority (i.e. q-value 1.0).
+  std::vector<absl::string_view> newContentEncodings;
+  std::vector<absl::string_view> contentEncodings =
+      Http::HeaderUtility::parseCommaDelimitedHeader(accept_encoding_header);
+  for (absl::string_view contentEncoding : contentEncodings) {
+    absl::string_view strippedEncoding =
+        Http::HeaderUtility::getSemicolonDelimitedAttribute(contentEncoding);
+    if (strippedEncoding != encoding) {
+      // Add back all content encodings back except for the content encoding that we want to
+      // add. For example, if content encoding is "gzip", this filters out encodings "gzip" and
+      // "gzip;q=0.6".
+      newContentEncodings.push_back(contentEncoding);
+    }
+  }
+  // Finally add a single instance of our content encoding.
+  newContentEncodings.push_back(encoding);
+  return absl::StrJoin(newContentEncodings, ",");
+}
+
+bool HeaderUtility::isPseudoHeader(absl::string_view header_name) {
+  return !header_name.empty() && header_name[0] == ':';
 }
 
 } // namespace Http
