@@ -82,10 +82,8 @@ constexpr const char* runtime_features[] = {
     "envoy.reloadable_features.proxy_102_103",
     "envoy.reloadable_features.remove_legacy_json",
     "envoy.reloadable_features.require_strict_1xx_and_204_response_headers",
-    // DO NOT MERGE until validating this feature exists
     "envoy.reloadable_features.sanitize_original_path",
     "envoy.reloadable_features.send_strict_1xx_and_204_response_headers",
-    // DO NOT MERGE until validating this feature exists
     "envoy.reloadable_features.service_sanitize_non_utf8_strings",
     "envoy.reloadable_features.strip_port_from_connect",
     "envoy.reloadable_features.udp_listener_updates_filter_chain_in_place",
@@ -95,7 +93,6 @@ constexpr const char* runtime_features[] = {
     "envoy.reloadable_features.use_dns_ttl",
     "envoy.reloadable_features.use_observable_cluster_name",
     "envoy.reloadable_features.validate_connect",
-    // DO NOT MERGE until validating this feature exists
     "envoy.reloadable_features.validate_upstream_headers",
     "envoy.reloadable_features.vhds_heartbeats",
     "envoy.restart_features.explicit_wildcard_resource",

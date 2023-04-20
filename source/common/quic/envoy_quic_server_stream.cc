@@ -163,8 +163,6 @@ void EnvoyQuicServerStream::OnInitialHeadersComplete(bool fin, size_t frame_len,
   if (Http::HeaderUtility::checkRequiredRequestHeaders(*headers) != Http::okStatus() ||
       Http::HeaderUtility::checkValidRequestHeaders(*headers) != Http::okStatus() ||
       (headers->Protocol() && !http3_options_.allow_extended_connect())) {
-      // Note: Cherry-pick included below line, but it looks like v1.21 did not yet incorporate spdy here
-      /* (headers->Protocol() && !spdy_session()->allow_extended_connect())) { */
     details_ = Http3ResponseCodeDetailValues::invalid_http_header;
     onStreamError(absl::nullopt);
     return;
