@@ -284,6 +284,8 @@ private:
   clearRouteCache(const envoy::service::ext_proc::v3::CommonResponse& common_response) override;
 
   Http::StreamDecoderFilterCallbacks* decoder_callbacks_{};
+
+
 };
 
 class EncodingProcessorState : public ProcessorState {

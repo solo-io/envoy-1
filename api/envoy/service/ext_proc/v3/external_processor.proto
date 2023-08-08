@@ -122,7 +122,7 @@ message ProcessingRequest {
 
 // For every ProcessingRequest received by the server with the ``async_mode`` field
 // set to false, the server must send back exactly one ProcessingResponse message.
-// [#next-free-field: 11]
+// [#next-free-field: 12]
 message ProcessingResponse {
   oneof response {
     option (validate.required) = true;
@@ -190,6 +190,9 @@ message ProcessingResponse {
   // Such message can be sent at most once in a particular Envoy ext_proc filter processing state.
   // To enable this API, one has to set ``max_message_timeout`` to a number >= 1ms.
   google.protobuf.Duration override_message_timeout = 10;
+
+  // Dynamic metadata associated with the request.
+  config.core.v3.Metadata metadata_context = 11;
 }
 
 // The following are messages that are sent to the server.
