@@ -144,6 +144,8 @@ void Filter::closeStream() {
 
 void Filter::onDestroy() {
   ENVOY_LOG(debug, "onDestroy");
+  ENVOY_LOG(debug, "dynamicMetadata: ");
+  ENVOY_LOG(debug, encoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
   // Make doubly-sure we no longer use the stream, as
   // per the filter contract.
   processing_complete_ = true;
@@ -548,6 +550,13 @@ void Filter::onNewTimeout(const uint32_t message_timeout_ms) {
   stats_.override_message_timeout_received_.inc();
 }
 
+void setDynamicMetadata(Http::StreamFilterCallbacks* cb, std::unique_ptr<ProcessingResponse>& response){
+  if(response->has_dynamic_metadata()) {
+    cb->streamInfo().setDynamicMetadata("envoy.filters.http.ext_proc",
+                                                        response->dynamic_metadata());
+  }
+}
+
 void Filter::onReceiveMessage(std::unique_ptr<ProcessingResponse>&& r) {
   if (processing_complete_) {
     ENVOY_LOG(debug, "Ignoring stream message received after processing complete");
@@ -576,24 +585,31 @@ void Filter::onReceiveMessage(std::unique_ptr<ProcessingResponse>&& r) {
   absl::Status processing_status;
   switch (response->response_case()) {
   case ProcessingResponse::ResponseCase::kRequestHeaders:
+    setDynamicMetadata(decoder_callbacks_, response);
     processing_status = decoding_state_.handleHeadersResponse(response->request_headers());
     break;
   case ProcessingResponse::ResponseCase::kResponseHeaders:
+    setDynamicMetadata(encoder_callbacks_, response);
     processing_status = encoding_state_.handleHeadersResponse(response->response_headers());
     break;
   case ProcessingResponse::ResponseCase::kRequestBody:
+    setDynamicMetadata(decoder_callbacks_, response);
     processing_status = decoding_state_.handleBodyResponse(response->request_body());
     break;
   case ProcessingResponse::ResponseCase::kResponseBody:
+    setDynamicMetadata(encoder_callbacks_, response);
     processing_status = encoding_state_.handleBodyResponse(response->response_body());
     break;
   case ProcessingResponse::ResponseCase::kRequestTrailers:
+    setDynamicMetadata(decoder_callbacks_, response);
     processing_status = decoding_state_.handleTrailersResponse(response->request_trailers());
     break;
   case ProcessingResponse::ResponseCase::kResponseTrailers:
+    setDynamicMetadata(encoder_callbacks_, response);
     processing_status = encoding_state_.handleTrailersResponse(response->response_trailers());
     break;
   case ProcessingResponse::ResponseCase::kImmediateResponse:
+    setDynamicMetadata(decoder_callbacks_, response);
     // We won't be sending anything more to the stream after we
     // receive this message.
     ENVOY_LOG(debug, "Sending immediate response");

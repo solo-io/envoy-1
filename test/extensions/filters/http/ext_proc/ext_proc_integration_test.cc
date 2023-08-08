@@ -231,6 +231,26 @@ protected:
     }
   }
 
+  void processResponseHeadersMessageDynamicMetadata(
+      FakeUpstream& grpc_upstream, bool first_message,
+      absl::optional<std::function<bool(const HttpHeaders&, ProcessingResponse&)>> cb) {
+    ProcessingRequest request;
+    if (first_message) {
+      ASSERT_TRUE(grpc_upstream.waitForHttpConnection(*dispatcher_, processor_connection_));
+      ASSERT_TRUE(processor_connection_->waitForNewStream(*dispatcher_, processor_stream_));
+    }
+    ASSERT_TRUE(processor_stream_->waitForGrpcMessage(*dispatcher_, request));
+    ASSERT_TRUE(request.has_response_headers());
+    if (first_message) {
+      processor_stream_->startGrpcStream();
+    }
+    ProcessingResponse response;
+    const bool sendReply = !cb || (*cb)(request.response_headers(), response);
+    if (sendReply) {
+      processor_stream_->sendGrpcMessage(response);
+    }
+  }
+
   void processRequestBodyMessage(
       FakeUpstream& grpc_upstream, bool first_message,
       absl::optional<std::function<bool(const HttpBody&, BodyResponse&)>> cb) {
@@ -1957,4 +1977,34 @@ TEST_P(ExtProcIntegrationTest, RequestMessageNewTimeoutNegativeTestTimeoutNotAcc
   newTimeoutWrongConfigTest(500);
 }
 
+// Test the filter using the default configuration by connecting to
+// an ext_proc server that responds to the response_headers message
+// by requesting to modify the response headers.
+TEST_P(ExtProcIntegrationTest, SetDynamicMetadataOnResponse) {
+  initializeConfig();
+  HttpIntegrationTest::initialize();
+  auto response = sendDownstreamRequest(absl::nullopt);
+  processRequestHeadersMessage(*grpc_upstreams_[0], true, absl::nullopt);
+  handleUpstreamRequest();
+
+  processResponseHeadersMessageDynamicMetadata(
+      *grpc_upstreams_[0], false, [](const HttpHeaders&, ProcessingResponse& headers_resp) {
+        auto* response_fields = headers_resp.mutable_dynamic_metadata()->mutable_fields();
+        auto s = google::protobuf::Value();
+        *s.mutable_string_value() = "bar";
+        (*response_fields)["foo"] = s;
+        return true;
+      });
+
+  verifyDownstreamResponse(*response, 200);
+  envoy::config::core::v3::Metadata metadata;
+  const std::string yaml = R"EOF(
+  filter_metadata:
+    envoy.filters.http.ext_proc:
+      foo: bar
+  )EOF";
+
+  TestUtility::loadFromYaml(yaml, metadata);
+  EXPECT_EQ(codec_client_->streamInfo().dynamicMetadata().DebugString(), metadata.DebugString());
+}
 } // namespace Envoy
