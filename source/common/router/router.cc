@@ -1011,6 +1011,8 @@ void Filter::onRequestComplete() {
 }
 
 void Filter::onDestroy() {
+  ENVOY_LOG(debug, "router dynamicMetadata: ");
+  ENVOY_LOG(debug, callbacks_->streamInfo().dynamicMetadata().DebugString());
   // Reset any in-flight upstream requests.
   resetAll();
   cleanup();
