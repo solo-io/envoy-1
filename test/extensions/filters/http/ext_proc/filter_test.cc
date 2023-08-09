@@ -78,6 +78,24 @@ protected:
     EXPECT_CALL(decoder_callbacks_, dispatcher()).WillRepeatedly(ReturnRef(dispatcher_));
     EXPECT_CALL(decoder_callbacks_, route()).WillRepeatedly(Return(route_));
     EXPECT_CALL(decoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
+    EXPECT_CALL(encoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
+    EXPECT_CALL(stream_info_, dynamicMetadata()).WillRepeatedly(ReturnRef(dynamic_metadata_));
+    EXPECT_CALL(stream_info_, setDynamicMetadata(_, _)).WillOnce(Invoke(this, &HttpFilterTest::doSetDynamicMetadata));
+
+    EXPECT_CALL(async_client_stream_info_, bytesSent()).WillRepeatedly(Return(100));
+    EXPECT_CALL(async_client_stream_info_, bytesReceived()).WillRepeatedly(Return(200));
+    EXPECT_CALL(async_client_stream_info_, upstreamClusterInfo());
+    EXPECT_CALL(testing::Const(async_client_stream_info_), upstreamInfo());
+    // Get pointer to MockUpstreamInfo.
+    std::shared_ptr<StreamInfo::MockUpstreamInfo> mock_upstream_info =
+        std::dynamic_pointer_cast<StreamInfo::MockUpstreamInfo>(
+            async_client_stream_info_.upstreamInfo());
+    EXPECT_CALL(testing::Const(*mock_upstream_info), upstreamHost());
+
+    // Pointing dispatcher_.time_system_ to a SimulatedTimeSystem object.
+    test_time_ = new Envoy::Event::SimulatedTimeSystem();
+    dispatcher_.time_system_.reset(test_time_);
+
     EXPECT_CALL(dispatcher_, createTimer_(_))
         .Times(AnyNumber())
         .WillRepeatedly(Invoke([this](Unused) {
@@ -138,6 +156,10 @@ protected:
     EXPECT_CALL(*stream, close()).WillOnce(Invoke(this, &HttpFilterTest::doSendClose));
     return stream;
   }
+
+  void doSetDynamicMetadata(const std::string& ns, const ProtobufWkt::Struct& val){
+      (*dynamic_metadata_.mutable_filter_metadata())[ns] = val;
+  };
 
   void doSend(ProcessingRequest&& request, Unused) { last_request_ = std::move(request); }
 
@@ -300,6 +322,9 @@ protected:
   Http::TestRequestTrailerMapImpl request_trailers_;
   Http::TestResponseTrailerMapImpl response_trailers_;
   std::vector<Event::MockTimer*> timers_;
+  TestScopedRuntime scoped_runtime_;
+  Envoy::Event::SimulatedTimeSystem* test_time_;
+  envoy::config::core::v3::Metadata dynamic_metadata_;
 };
 
 // Using the default configuration, test the filter with a processor that
@@ -2330,7 +2355,103 @@ TEST_F(HttpFilterTest, FailOnInvalidHeaderMutations) {
   filter_->onDestroy();
 }
 
-class HttpFilter2Test : public HttpFilterTest, public Http::HttpConnectionManagerImplMixin {};
+// Set the HCM max request headers size limit to be 2kb. Test the
+// header mutation end result size check works for the trailer response.
+TEST_F(HttpFilterTest, ResponseTrailerMutationExceedSizeLimit) {
+  TestResponseTrailerMapImpl resp_trailers_({}, 2, 100);
+  initialize(R"EOF(
+  grpc_service:
+    envoy_grpc:
+      cluster_name: "ext_proc_server"
+  processing_mode:
+    request_header_mode: "SKIP"
+    response_header_mode: "SEND"
+    request_body_mode: "NONE"
+    response_body_mode: "NONE"
+    request_trailer_mode: "SKIP"
+    response_trailer_mode: "SEND"
+  )EOF");
+
+  EXPECT_EQ(FilterHeadersStatus::Continue, filter_->decodeHeaders(request_headers_, true));
+  response_headers_.addCopy(LowerCaseString(":status"), "200");
+
+  EXPECT_EQ(FilterHeadersStatus::StopIteration, filter_->encodeHeaders(response_headers_, false));
+  processResponseHeaders(false, absl::nullopt);
+  // Construct a large trailer message to be close to the HCM size limit.
+  resp_trailers_.addCopy(LowerCaseString("x-some-trailer"), std::string(1950, 'a'));
+  EXPECT_EQ(FilterTrailersStatus::StopIteration, filter_->encodeTrailers(resp_trailers_));
+  processResponseTrailers(
+      [](const HttpTrailers&, ProcessingResponse&, TrailersResponse& trailer_resp) {
+        auto headers_mut = trailer_resp.mutable_header_mutation();
+        // The trailer mutation in the response does not exceed the count limit 100 or the
+        // size limit 2kb. But the result header map size exceeds the count limit 2kb.
+        auto add1 = headers_mut->add_set_headers();
+        add1->mutable_header()->set_key("x-new-header-0123456789");
+        add1->mutable_header()->set_value("new-header-0123456789");
+        auto add2 = headers_mut->add_set_headers();
+        add2->mutable_header()->set_key("x-some-other-header-0123456789");
+        add2->mutable_header()->set_value("some-new-header-0123456789");
+      },
+      false);
+  filter_->onDestroy();
+
+  EXPECT_EQ(1, config_->stats().streams_started_.value());
+  EXPECT_EQ(2, config_->stats().stream_msgs_sent_.value());
+  EXPECT_EQ(2, config_->stats().stream_msgs_received_.value());
+  EXPECT_EQ(1, config_->stats().streams_closed_.value());
+  // The header mutation rejection counter increments.
+  EXPECT_EQ(1, config_->stats().rejected_header_mutations_.value());
+}
+
+// Verify that when returning an response with dynamic_metadata field set, the filter emits
+// dynamic metadata.
+TEST_F(HttpFilterTest, EmitDynamicMetadata) {
+  // Configure the filter to only pass response headers to ext server.
+  initialize(R"EOF(
+  grpc_service:
+    envoy_grpc:
+      cluster_name: "ext_proc_server"
+  processing_mode:
+    request_header_mode: "SKIP"
+    response_header_mode: "SEND"
+    request_body_mode: "NONE"
+    response_body_mode: "NONE"
+    request_trailer_mode: "SKIP"
+    response_trailer_mode: "SKIP"
+
+  )EOF");
+
+  Buffer::OwnedImpl empty_chunk;
+
+  EXPECT_EQ(FilterHeadersStatus::Continue, filter_->decodeHeaders(request_headers_, false));
+  EXPECT_EQ(FilterDataStatus::Continue, filter_->decodeData(empty_chunk, true));
+  EXPECT_EQ(FilterTrailersStatus::Continue, filter_->decodeTrailers(request_trailers_));
+
+  EXPECT_EQ(FilterHeadersStatus::StopIteration, filter_->encodeHeaders(response_headers_, false));
+
+  processResponseHeaders(false, [](const HttpHeaders&, ProcessingResponse& resp, HeadersResponse&) {
+        auto metadata_mut = resp.mutable_dynamic_metadata()->mutable_fields();
+        (*metadata_mut)["foo"].set_string_value("bar");
+      });
+
+  EXPECT_EQ(FilterDataStatus::Continue, filter_->encodeData(empty_chunk, true));
+  EXPECT_EQ(FilterTrailersStatus::Continue, filter_->encodeTrailers(response_trailers_));
+
+  envoy::config::core::v3::Metadata expected_metadata;
+  const std::string yaml = R"EOF(
+  filter_metadata:
+    envoy.filters.http.ext_proc.encoder:
+      foo: bar
+  )EOF";
+
+  TestUtility::loadFromYaml(yaml, expected_metadata);
+  EXPECT_EQ(dynamic_metadata_.DebugString(), expected_metadata.DebugString());
+
+  filter_->onDestroy();
+}
+
+class HttpFilter2Test : public HttpFilterTest,
+                        public ::Envoy::Http::HttpConnectionManagerImplMixin {};
 
 // Test proves that when decodeData(data, end_stream=true) is called before request headers response
 // is returned, ext_proc filter will buffer the data in the ActiveStream buffer without triggering a
@@ -2527,7 +2648,6 @@ TEST_F(HttpFilter2Test, LastEncodeDataCallExceedsStreamBufferLimitWouldJustRaise
   Buffer::OwnedImpl fake_input("hello");
   conn_manager_->onData(fake_input, false);
 }
-
 } // namespace
 } // namespace ExternalProcessing
 } // namespace HttpFilters
