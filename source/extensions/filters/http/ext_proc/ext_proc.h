@@ -135,7 +135,11 @@ public:
         filter_metadata_(config.filter_metadata()),
         allow_mode_override_(config.allow_mode_override()),
         allowed_headers_(initHeaderMatchers(config.forward_rules().allowed_headers())),
-        disallowed_headers_(initHeaderMatchers(config.forward_rules().disallowed_headers())) {}
+        disallowed_headers_(initHeaderMatchers(config.forward_rules().disallowed_headers())),
+        metadata_context_namespaces_(config.metadata_context_namespaces().begin(),
+                                     config.metadata_context_namespaces().end()),
+        typed_metadata_context_namespaces_(config.typed_metadata_context_namespaces().begin(),
+                                           config.typed_metadata_context_namespaces().end()) {}
 
   bool failureModeAllow() const { return failure_mode_allow_; }
 
@@ -163,6 +167,14 @@ public:
   }
 
   const Envoy::ProtobufWkt::Struct& filterMetadata() const { return filter_metadata_; }
+
+  const std::vector<std::string>& metadataContextNamespaces() {
+    return metadata_context_namespaces_;
+  }
+
+  const std::vector<std::string>& typedMetadataContextNamespaces() {
+    return typed_metadata_context_namespaces_;
+  }
 
 private:
   ExtProcFilterStats generateStats(const std::string& prefix,
@@ -196,6 +208,8 @@ private:
   const std::vector<Matchers::StringMatcherPtr> allowed_headers_;
   // Empty disallowed_header_ means disallow nothing, i.e, allow all.
   const std::vector<Matchers::StringMatcherPtr> disallowed_headers_;
+  const std::vector<std::string> metadata_context_namespaces_;
+  const std::vector<std::string> typed_metadata_context_namespaces_;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -297,6 +311,7 @@ private:
   Http::FilterTrailersStatus onTrailers(ProcessorState& state, Http::HeaderMap& trailers);
   void setEncoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
   void setDecoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void addDynamicMetadata(envoy::service::ext_proc::v3::ProcessingRequest& req);
 
   const FilterConfigSharedPtr config_;
   const ExternalProcessorClientPtr client_;
