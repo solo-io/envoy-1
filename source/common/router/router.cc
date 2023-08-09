@@ -1008,6 +1008,7 @@ void Filter::onRequestComplete() {
 }
 
 void Filter::onDestroy() {
+  // TODO(jbohanon) remove before merge; here for development
   ENVOY_LOG(debug, "router dynamicMetadata: ");
   ENVOY_LOG(debug, callbacks_->streamInfo().dynamicMetadata().DebugString());
   // Reset any in-flight upstream requests.
