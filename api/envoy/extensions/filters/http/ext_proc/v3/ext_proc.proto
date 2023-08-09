@@ -95,7 +95,7 @@ option (xds.annotations.v3.file_status).work_in_progress = true;
 // messages, and the server must reply with
 // :ref:`ProcessingResponse <envoy_v3_api_msg_service.ext_proc.v3.ProcessingResponse>`.
 
-// [#next-free-field: 11]
+// [#next-free-field: 17]
 message ExternalProcessor {
   // Configuration for the gRPC service that the filter will communicate with.
   // The filter supports both the "Envoy" and "Google" gRPC clients.
@@ -168,6 +168,39 @@ message ExternalProcessor {
   // :ref:`override_message_timeout <envoy_v3_api_field_service.ext_proc.v3.ProcessingResponse.override_message_timeout>`
   // If not specified, by default it is 0, which will effectively disable the ``override_message_timeout`` API.
   google.protobuf.Duration max_message_timeout = 10;
+  reserved 11, 12, 13, 14
+  // Specifies a list of metadata namespaces whose values, if present, will be passed to the
+  // ext_proc service as an opaque *protobuf::Struct*.
+  repeated string metadata_context_namespaces = 15;
+
+  // Specifies a list of metadata namespaces whose values, if present, will be passed to the
+  // ext_proc service. :ref:`typed_filter_metadata <envoy_v3_api_field_config.core.v3.Metadata.typed_filter_metadata>` is passed as an ``protobuf::Any``.
+  //
+  // It works in a way similar to ``metadata_context_namespaces`` but allows envoy and external processing server to share the protobuf message definition
+  // in order to do a safe parsing.
+  repeated string typed_metadata_context_namespaces = 16;
+
+// The HeaderForwardingRules structure specifies what headers are
+// allowed to be forwarded to the external processing server.
+//
+// This works as below:
+//
+//   1. If neither ``allowed_headers`` nor ``disallowed_headers`` is set, all headers are forwarded.
+//   2. If both ``allowed_headers`` and ``disallowed_headers`` are set, only headers in the
+//      ``allowed_headers`` but not in the ``disallowed_headers`` are forwarded.
+//   3. If ``allowed_headers`` is set, and ``disallowed_headers`` is not set, only headers in
+//      the ``allowed_headers`` are forwarded.
+//   4. If ``disallowed_headers`` is set, and ``allowed_headers`` is not set, all headers except
+//      headers in the ``disallowed_headers`` are forwarded.
+message HeaderForwardingRules {
+  // If set, specifically allow any header in this list to be forwarded to the external
+  // processing server. This can be overridden by the below ``disallowed_headers``.
+  type.matcher.v3.ListStringMatcher allowed_headers = 1;
+
+  // If set, specifically disallow any header in this list to be forwarded to the external
+  // processing server. This overrides the above ``allowed_headers`` if a header matches both.
+  type.matcher.v3.ListStringMatcher disallowed_headers = 2;
+>>>>>>> 8f9bd1cb93 (send metadata api)
 }
 
 // Extra settings that may be added to per-route configuration for a

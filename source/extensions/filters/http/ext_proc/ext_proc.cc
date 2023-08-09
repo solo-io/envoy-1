@@ -513,6 +513,7 @@ void Filter::sendBodyChunk(ProcessorState& state, const Buffer::Instance& data,
   state.onStartProcessorCall(std::bind(&Filter::onMessageTimeout, this), config_->messageTimeout(),
                              new_state);
   ProcessingRequest req;
+  addDynamicMetadata(req);
   auto* body_req = state.mutableBody(req);
   body_req->set_end_of_stream(end_stream);
   body_req->set_body(data.toString());
@@ -550,6 +551,67 @@ void Filter::onNewTimeout(const uint32_t message_timeout_ms) {
     return;
   }
   stats_.override_message_timeout_received_.inc();
+}
+
+void Filter::addDynamicMetadata(ProcessingRequest& req) {
+  envoy::config::core::v3::Metadata metadata_context;
+
+  // If metadata_context_namespaces is specified, pass matching filter metadata to the ext_proc
+  // service. If metadata key is set in both the connection and request metadata then the value
+  // will be the request metadata value. If metadata key is set in both the encoder and decoder
+  // streams, then the value will be the encoder value
+  const auto& connection_decoder_metadata =
+      decoder_callbacks_->connection()->streamInfo().dynamicMetadata().filter_metadata();
+  const auto& request_decoder_metadata =
+      decoder_callbacks_->streamInfo().dynamicMetadata().filter_metadata();
+  const auto& connection_encoder_metadata =
+      encoder_callbacks_->connection()->streamInfo().dynamicMetadata().filter_metadata();
+  const auto& request_encoder_metadata =
+      encoder_callbacks_->streamInfo().dynamicMetadata().filter_metadata();
+  for (const auto& context_key : config_->metadataContextNamespaces()) {
+    if (const auto metadata_it = request_decoder_metadata.find(context_key);
+        metadata_it != request_decoder_metadata.end()) {
+      (*metadata_context.mutable_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = request_encoder_metadata.find(context_key);
+        metadata_it != request_encoder_metadata.end()) {
+      (*metadata_context.mutable_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = connection_decoder_metadata.find(context_key);
+               metadata_it != connection_decoder_metadata.end()) {
+      (*metadata_context.mutable_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = connection_encoder_metadata.find(context_key);
+               metadata_it != connection_encoder_metadata.end()) {
+      (*metadata_context.mutable_filter_metadata())[metadata_it->first] = metadata_it->second;
+    }
+  }
+
+  // If typed_metadata_context_namespaces is specified, pass matching typed filter metadata to the
+  // ext_authz service. If metadata key is set in both the connection and request metadata then
+  // the value will be the request metadata value.
+  const auto& connection_decoder_typed_metadata =
+      decoder_callbacks_->connection()->streamInfo().dynamicMetadata().typed_filter_metadata();
+  const auto& request_decoder_typed_metadata =
+      decoder_callbacks_->streamInfo().dynamicMetadata().typed_filter_metadata();
+  const auto& connection_encoder_typed_metadata =
+      encoder_callbacks_->connection()->streamInfo().dynamicMetadata().typed_filter_metadata();
+  const auto& request_encoder_typed_metadata =
+      encoder_callbacks_->streamInfo().dynamicMetadata().typed_filter_metadata();
+  for (const auto& context_key : config_->typedMetadataContextNamespaces()) {
+    if (const auto metadata_it = request_decoder_typed_metadata.find(context_key);
+        metadata_it != request_decoder_typed_metadata.end()) {
+      (*metadata_context.mutable_typed_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = request_encoder_typed_metadata.find(context_key);
+        metadata_it != request_encoder_typed_metadata.end()) {
+      (*metadata_context.mutable_typed_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = connection_decoder_typed_metadata.find(context_key);
+               metadata_it != connection_decoder_typed_metadata.end()) {
+      (*metadata_context.mutable_typed_filter_metadata())[metadata_it->first] = metadata_it->second;
+    } else if (const auto metadata_it = connection_encoder_typed_metadata.find(context_key);
+               metadata_it != connection_encoder_typed_metadata.end()) {
+      (*metadata_context.mutable_typed_filter_metadata())[metadata_it->first] = metadata_it->second;
+    }
+  }
+
+  *req.mutable_metadata_context() = metadata_context;
 }
 
 void setDynamicMetadata(std::string ns, Http::StreamFilterCallbacks* cb, std::unique_ptr<ProcessingResponse>& response){
