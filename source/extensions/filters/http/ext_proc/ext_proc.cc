@@ -145,6 +145,7 @@ void Filter::closeStream() {
 
 void Filter::onDestroy() {
   ENVOY_LOG(debug, "onDestroy");
+  // TODO(jbohanon) remove before merge; here for development
   ENVOY_LOG(debug, "dynamicMetadata: ");
   ENVOY_LOG(debug, encoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
   // Make doubly-sure we no longer use the stream, as

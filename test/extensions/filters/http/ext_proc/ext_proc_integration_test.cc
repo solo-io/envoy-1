@@ -231,26 +231,6 @@ protected:
     }
   }
 
-  void processResponseHeadersMessageDynamicMetadata(
-      FakeUpstream& grpc_upstream, bool first_message,
-      absl::optional<std::function<bool(const HttpHeaders&, ProcessingResponse&)>> cb) {
-    ProcessingRequest request;
-    if (first_message) {
-      ASSERT_TRUE(grpc_upstream.waitForHttpConnection(*dispatcher_, processor_connection_));
-      ASSERT_TRUE(processor_connection_->waitForNewStream(*dispatcher_, processor_stream_));
-    }
-    ASSERT_TRUE(processor_stream_->waitForGrpcMessage(*dispatcher_, request));
-    ASSERT_TRUE(request.has_response_headers());
-    if (first_message) {
-      processor_stream_->startGrpcStream();
-    }
-    ProcessingResponse response;
-    const bool sendReply = !cb || (*cb)(request.response_headers(), response);
-    if (sendReply) {
-      processor_stream_->sendGrpcMessage(response);
-    }
-  }
-
   void processRequestBodyMessage(
       FakeUpstream& grpc_upstream, bool first_message,
       absl::optional<std::function<bool(const HttpBody&, BodyResponse&)>> cb) {
