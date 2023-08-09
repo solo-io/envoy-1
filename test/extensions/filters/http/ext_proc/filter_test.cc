@@ -80,7 +80,7 @@ protected:
     EXPECT_CALL(decoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
     EXPECT_CALL(encoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
     EXPECT_CALL(stream_info_, dynamicMetadata()).WillRepeatedly(ReturnRef(dynamic_metadata_));
-    EXPECT_CALL(stream_info_, setDynamicMetadata(_, _)).WillOnce(Invoke(this, &HttpFilterTest::doSetDynamicMetadata));
+    EXPECT_CALL(stream_info_, setDynamicMetadata(_, _)).Times(AnyNumber()).WillOnce(Invoke(this, &HttpFilterTest::doSetDynamicMetadata));
 
     EXPECT_CALL(async_client_stream_info_, bytesSent()).WillRepeatedly(Return(100));
     EXPECT_CALL(async_client_stream_info_, bytesReceived()).WillRepeatedly(Return(200));

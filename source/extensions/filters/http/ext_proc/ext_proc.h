@@ -76,7 +76,11 @@ public:
       : failure_mode_allow_(config.failure_mode_allow()), message_timeout_(message_timeout),
         max_message_timeout_ms_(max_message_timeout_ms),
         stats_(generateStats(stats_prefix, config.stat_prefix(), scope)),
-        processing_mode_(config.processing_mode()), mutation_checker_(config.mutation_rules()) {}
+        processing_mode_(config.processing_mode()), mutation_checker_(config.mutation_rules()),
+        metadata_context_namespaces_(config.metadata_context_namespaces().begin(),
+                                     config.metadata_context_namespaces().end()),
+        typed_metadata_context_namespaces_(config.typed_metadata_context_namespaces().begin(),
+                                           config.typed_metadata_context_namespaces().end()) {}
 
   bool failureModeAllow() const { return failure_mode_allow_; }
 
@@ -94,6 +98,14 @@ public:
     return mutation_checker_;
   }
 
+  const std::vector<std::string>& metadataContextNamespaces() {
+    return metadata_context_namespaces_;
+  }
+
+  const std::vector<std::string>& typedMetadataContextNamespaces() {
+    return typed_metadata_context_namespaces_;
+  }
+
 private:
   ExtProcFilterStats generateStats(const std::string& prefix,
                                    const std::string& filter_stats_prefix, Stats::Scope& scope) {
@@ -108,6 +120,8 @@ private:
   ExtProcFilterStats stats_;
   const envoy::extensions::filters::http::ext_proc::v3::ProcessingMode processing_mode_;
   const Filters::Common::MutationRules::Checker mutation_checker_;
+  const std::vector<std::string> metadata_context_namespaces_;
+  const std::vector<std::string> typed_metadata_context_namespaces_;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -213,6 +227,7 @@ private:
   Http::FilterTrailersStatus onTrailers(ProcessorState& state, Http::HeaderMap& trailers);
   void setEncoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
   void setDecoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void addDynamicMetadata(envoy::service::ext_proc::v3::ProcessingRequest& req);
 
   const FilterConfigSharedPtr config_;
   const ExternalProcessorClientPtr client_;
