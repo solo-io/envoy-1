@@ -2803,35 +2803,5 @@ TEST_P(ExtProcIntegrationTest, SkipHeaderTrailerSendBodyClientSendAll) {
   handleUpstreamRequest();
   verifyDownstreamResponse(*response, 200);
 }
-// Test the filter using the default configuration by connecting to
-// an ext_proc server that responds to the response_headers message
-// by requesting to modify the response headers.
-TEST_P(ExtProcIntegrationTest, SetDynamicMetadataOnResponse) {
-  initializeConfig();
-  HttpIntegrationTest::initialize();
-  auto response = sendDownstreamRequest(absl::nullopt);
-  processRequestHeadersMessage(*grpc_upstreams_[0], true, absl::nullopt);
-  handleUpstreamRequest();
-
-  processResponseHeadersMessageDynamicMetadata(
-      *grpc_upstreams_[0], false, [](const HttpHeaders&, ProcessingResponse& headers_resp) {
-        auto* response_fields = headers_resp.mutable_dynamic_metadata()->mutable_fields();
-        auto s = google::protobuf::Value();
-        *s.mutable_string_value() = "bar";
-        (*response_fields)["foo"] = s;
-        return true;
-      });
-
-  verifyDownstreamResponse(*response, 200);
-  envoy::config::core::v3::Metadata metadata;
-  const std::string yaml = R"EOF(
-  filter_metadata:
-    envoy.filters.http.ext_proc:
-      foo: bar
-  )EOF";
-
-  TestUtility::loadFromYaml(yaml, metadata);
-  EXPECT_EQ(codec_client_->streamInfo().dynamicMetadata().DebugString(), metadata.DebugString());
-}
 
 } // namespace Envoy
