@@ -14,6 +14,10 @@
 #include "envoy/stats/stats_macros.h"
 
 #include "source/common/common/logger.h"
+#include "source/common/common/matchers.h"
+#include "source/common/protobuf/protobuf.h"
+#include "parser/parser.h"
+#include "source/extensions/filters/common/expr/evaluator.h"
 #include "source/extensions/filters/common/mutation_rules/mutation_rules.h"
 #include "source/extensions/filters/http/common/pass_through_filter.h"
 #include "source/extensions/filters/http/ext_proc/client.h"
@@ -72,11 +76,15 @@ public:
   FilterConfig(const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& config,
                const std::chrono::milliseconds message_timeout,
                const uint32_t max_message_timeout_ms, Stats::Scope& scope,
-               const std::string& stats_prefix)
-      : failure_mode_allow_(config.failure_mode_allow()), message_timeout_(message_timeout),
-        max_message_timeout_ms_(max_message_timeout_ms),
+               const std::string& stats_prefix,
+               Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder)
+      : failure_mode_allow_(config.failure_mode_allow()),
+        message_timeout_(message_timeout), max_message_timeout_ms_(max_message_timeout_ms),
         stats_(generateStats(stats_prefix, config.stat_prefix(), scope)),
         processing_mode_(config.processing_mode()), mutation_checker_(config.mutation_rules()),
+        builder_(builder),
+        request_expr_(initExpressions(config.request_attributes())),
+        response_expr_(initExpressions(config.response_attributes())) {}
         metadata_context_namespaces_(config.metadata_context_namespaces().begin(),
                                      config.metadata_context_namespaces().end()),
         typed_metadata_context_namespaces_(config.typed_metadata_context_namespaces().begin(),
@@ -98,6 +106,14 @@ public:
     return mutation_checker_;
   }
 
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& request_expr() const {
+    return request_expr_;
+  }
+
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& response_expr() const {
+    return response_expr_;
+  }
+
   const std::vector<std::string>& metadataContextNamespaces() {
     return metadata_context_namespaces_;
   }
@@ -113,6 +129,21 @@ private:
     return {ALL_EXT_PROC_FILTER_STATS(POOL_COUNTER_PREFIX(scope, final_prefix))};
   }
 
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
+  initExpressions(const Protobuf::RepeatedPtrField<std::string>&
+                      matchers) {
+    absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> expressions;
+    for (const auto& matcher : matchers) {
+        auto parse_status = google::api::expr::parser::Parse(matcher);
+      if (!parse_status.ok()) {
+        throw EnvoyException("Unable to parse descriptor expression: " +
+                            parse_status.status().ToString());
+      }
+      expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(builder_->builder(), parse_status.value().expr()));
+    }
+    return expressions;
+  }
+
   const bool failure_mode_allow_;
   const std::chrono::milliseconds message_timeout_;
   const uint32_t max_message_timeout_ms_;
@@ -120,6 +151,10 @@ private:
   ExtProcFilterStats stats_;
   const envoy::extensions::filters::http::ext_proc::v3::ProcessingMode processing_mode_;
   const Filters::Common::MutationRules::Checker mutation_checker_;
+  Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder_;
+
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> request_expr_;
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> response_expr_;
   const std::vector<std::string> metadata_context_namespaces_;
   const std::vector<std::string> typed_metadata_context_namespaces_;
 };
@@ -220,7 +255,13 @@ private:
   void sendImmediateResponse(const envoy::service::ext_proc::v3::ImmediateResponse& response);
 
   Http::FilterHeadersStatus onHeaders(ProcessorState& state,
-                                      Http::RequestOrResponseHeaderMap& headers, bool end_stream);
+                                      Http::RequestOrResponseHeaderMap& headers,
+                                      bool end_stream,
+                                      absl::optional<google::protobuf::Struct> proto);
+
+  const absl::optional<google::protobuf::Struct>
+  evaluateAttributes(Filters::Common::Expr::ActivationPtr activation,
+                     const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& expr);
   // Return a pair of whether to terminate returning the current result.
   std::pair<bool, Http::FilterDataStatus> sendStreamChunk(ProcessorState& state, bool end_stream);
   Http::FilterDataStatus onData(ProcessorState& state, Buffer::Instance& data, bool end_stream);
