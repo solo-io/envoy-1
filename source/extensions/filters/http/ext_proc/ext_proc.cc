@@ -145,9 +145,6 @@ void Filter::closeStream() {
 
 void Filter::onDestroy() {
   ENVOY_LOG(debug, "onDestroy");
-  // TODO(jbohanon) remove before merge; here for development
-  ENVOY_LOG(debug, "dynamicMetadata: ");
-  ENVOY_LOG(debug, encoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
   // Make doubly-sure we no longer use the stream, as
   // per the filter contract.
   processing_complete_ = true;
@@ -171,6 +168,7 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
   state.setHeaders(&headers);
   state.setHasNoBody(end_stream);
   ProcessingRequest req;
+  addDynamicMetadata(req);
   auto* headers_req = state.mutableHeaders(req);
   MutationUtils::headersToProto(headers, *headers_req->mutable_headers());
   headers_req->set_end_of_stream(end_stream);
@@ -523,6 +521,7 @@ void Filter::sendBodyChunk(ProcessorState& state, const Buffer::Instance& data,
 
 void Filter::sendTrailers(ProcessorState& state, const Http::HeaderMap& trailers) {
   ProcessingRequest req;
+  addDynamicMetadata(req);
   auto* trailers_req = state.mutableTrailers(req);
   MutationUtils::headersToProto(trailers, *trailers_req->mutable_trailers());
   state.onStartProcessorCall(std::bind(&Filter::onMessageTimeout, this), config_->messageTimeout(),
