@@ -584,8 +584,9 @@ void Filter::addDynamicMetadata(ProcessingRequest& req) {
   }
 
   // If typed_metadata_context_namespaces is specified, pass matching typed filter metadata to the
-  // ext_authz service. If metadata key is set in both the connection and request metadata then
-  // the value will be the request metadata value.
+  // ext_proc service. If metadata key is set in both the connection and request metadata then
+  // the value will be the request metadata value. If metadata key is set in both the encoder and decoder
+  // streams, then the value will be the encoder value
   const auto& connection_decoder_typed_metadata =
       decoder_callbacks_->connection()->streamInfo().dynamicMetadata().typed_filter_metadata();
   const auto& request_decoder_typed_metadata =
