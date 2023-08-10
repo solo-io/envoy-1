@@ -1561,6 +1561,11 @@ void Filter::onUpstreamHeaders(uint64_t response_code, Http::ResponseHeaderMapPt
     headers->addReferenceKey(Http::Headers::get().SetCookie, header_value);
   }
 
+  auto mut_metadata = (*callbacks_->streamInfo().dynamicMetadata().mutable_filter_metadata())["envoy.filters.http.router"];
+  (*mut_metadata.mutable_fields())["harrison"].set_string_value("ford");
+  (*mut_metadata.mutable_fields())["harry"].set_string_value("potter");
+  ENVOY_LOG(debug, "callbacks_->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, callbacks_->streamInfo().dynamicMetadata().DebugString());
   callbacks_->streamInfo().setResponseCodeDetails(
       StreamInfo::ResponseCodeDetails::get().ViaUpstream);
 

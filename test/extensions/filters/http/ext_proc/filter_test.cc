@@ -3014,6 +3014,58 @@ TEST_F(HttpFilterTest, EmitDynamicMetadata) {
   filter_->onDestroy();
 }
 
+// Verify that when returning an response with dynamic_metadata field set, the filter emits
+// dynamic metadata.
+TEST_F(HttpFilterTest, AddDynamicMetadataToRequest) {
+  // Configure the filter to only pass response headers to ext server.
+  initialize(R"EOF(
+  grpc_service:
+    envoy_grpc:
+      cluster_name: "ext_proc_server"
+  processing_mode:
+    request_header_mode: "SKIP"
+    response_header_mode: "SEND"
+    request_body_mode: "NONE"
+    response_body_mode: "NONE"
+    request_trailer_mode: "SKIP"
+    response_trailer_mode: "SKIP"
+  metadadata_context_namespaces:
+    - test
+
+  )EOF");
+
+  auto mut_metadata = (*dynamic_metadata_.mutable_filter_metadata())["test"];
+  (*mut_metadata.mutable_fields())["harrison"].set_string_value("ford");
+  Buffer::OwnedImpl empty_chunk;
+  envoy::config::core::v3::Metadata expected_metadata;
+  const std::string yaml = R"EOF(
+  filter_metadata:
+    envoy.filters.http.ext_proc.encoder:
+      foo: bar
+  )EOF";
+
+  EXPECT_EQ(FilterHeadersStatus::Continue, filter_->decodeHeaders(request_headers_, false));
+  EXPECT_EQ(FilterDataStatus::Continue, filter_->decodeData(empty_chunk, true));
+  EXPECT_EQ(FilterTrailersStatus::Continue, filter_->decodeTrailers(request_trailers_));
+
+  EXPECT_EQ(FilterHeadersStatus::StopIteration, filter_->encodeHeaders(response_headers_, false));
+
+  EXPECT_EQ(FilterDataStatus::Continue, filter_->encodeData(empty_chunk, true));
+  EXPECT_EQ(FilterTrailersStatus::Continue, filter_->encodeTrailers(response_trailers_));
+
+  envoy::config::core::v3::Metadata expected_metadata;
+  const std::string yaml = R"EOF(
+  filter_metadata:
+    envoy.filters.http.ext_proc.encoder:
+      foo: bar
+  )EOF";
+
+  TestUtility::loadFromYaml(yaml, expected_metadata);
+  EXPECT_EQ(dynamic_metadata_.DebugString(), expected_metadata.DebugString());
+
+  filter_->onDestroy();
+}
+
 class HttpFilter2Test : public HttpFilterTest,
                         public ::Envoy::Http::HttpConnectionManagerImplMixin {};
 
