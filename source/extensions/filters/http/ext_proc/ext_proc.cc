@@ -145,6 +145,14 @@ void Filter::closeStream() {
 
 void Filter::onDestroy() {
   ENVOY_LOG(debug, "onDestroy");
+  ENVOY_LOG(debug, "encoder_callbacks_->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, encoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
+  ENVOY_LOG(debug, "decoder_callbacks_->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, decoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
+  ENVOY_LOG(debug, "encoder_callbacks_->connection()->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, encoder_callbacks_->connection()->streamInfo().dynamicMetadata().DebugString());
+  ENVOY_LOG(debug, "decoder_callbacks_->connection()->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, decoder_callbacks_->connection()->streamInfo().dynamicMetadata().DebugString());
   // Make doubly-sure we no longer use the stream, as
   // per the filter contract.
   processing_complete_ = true;
@@ -182,6 +190,9 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
 }
 
 FilterHeadersStatus Filter::decodeHeaders(RequestHeaderMap& headers, bool end_stream) {
+  ENVOY_LOG(debug, "decodeHeaders---------------------------");
+  ENVOY_LOG(debug, "decoder_callbacks_->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, decoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
   ENVOY_LOG(trace, "decodeHeaders: end_stream = {}", end_stream);
   mergePerRouteConfig();
   if (end_stream) {
@@ -473,6 +484,9 @@ FilterTrailersStatus Filter::decodeTrailers(RequestTrailerMap& trailers) {
 }
 
 FilterHeadersStatus Filter::encodeHeaders(ResponseHeaderMap& headers, bool end_stream) {
+  ENVOY_LOG(debug, "encodeHeaders---------------------------");
+  ENVOY_LOG(debug, "encoder_callbacks_->streamInfo().dynamicMetadata()");
+  ENVOY_LOG(debug, encoder_callbacks_->streamInfo().dynamicMetadata().DebugString());
   ENVOY_LOG(trace, "encodeHeaders end_stream = {}", end_stream);
   // Try to merge the route config again in case the decodeHeaders() is not called when processing
   // local reply.
