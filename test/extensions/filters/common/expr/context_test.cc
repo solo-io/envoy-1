@@ -416,6 +416,7 @@ TEST(Context, ResponseAttributes) {
     EXPECT_EQ(0xc, value.value().Int64OrDie()); // http:404 -> grpc:12
   }
   {
+    std::cout << "info without code" << std::endl;
     NiceMock<StreamInfo::MockStreamInfo> info_without_code;
     Http::TestResponseHeaderMapImpl header_map{{header_name, "a"}};
     Http::TestResponseTrailerMapImpl trailer_map{{trailer_name, "b"}};
