@@ -83,7 +83,7 @@ ActivationPtr createActivation(const StreamInfo::StreamInfo& info,
                                             response_trailers);
 }
 
-BuilderPtr createBuilder(Protobuf::Arena* arena) {
+Extensions::Filters::Common::Expr::BuilderPtr createBuilder(Protobuf::Arena* arena) {
   google::api::expr::runtime::InterpreterOptions options;
 
   // Security-oriented defaults
