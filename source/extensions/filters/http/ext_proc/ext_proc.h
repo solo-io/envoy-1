@@ -77,7 +77,7 @@ public:
                const std::chrono::milliseconds message_timeout,
                const uint32_t max_message_timeout_ms, Stats::Scope& scope,
                const std::string& stats_prefix,
-               Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder)
+               Extensions::Filters::Common::Expr::Builder& builder)
       : failure_mode_allow_(config.failure_mode_allow()),
         message_timeout_(message_timeout), max_message_timeout_ms_(max_message_timeout_ms),
         stats_(generateStats(stats_prefix, config.stat_prefix(), scope)),
@@ -151,7 +151,7 @@ private:
   ExtProcFilterStats stats_;
   const envoy::extensions::filters::http::ext_proc::v3::ProcessingMode processing_mode_;
   const Filters::Common::MutationRules::Checker mutation_checker_;
-  Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder_;
+  Extensions::Filters::Common::Expr::Builder& builder_;
 
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> request_expr_;
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> response_expr_;
