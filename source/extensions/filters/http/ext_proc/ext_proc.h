@@ -84,7 +84,7 @@ public:
         processing_mode_(config.processing_mode()), mutation_checker_(config.mutation_rules()),
         builder_(builder),
         request_expr_(initExpressions(config.request_attributes())),
-        response_expr_(initExpressions(config.response_attributes())) {}
+        response_expr_(initExpressions(config.response_attributes())),
         metadata_context_namespaces_(config.metadata_context_namespaces().begin(),
                                      config.metadata_context_namespaces().end()),
         typed_metadata_context_namespaces_(config.typed_metadata_context_namespaces().begin(),
