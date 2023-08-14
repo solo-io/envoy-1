@@ -139,7 +139,7 @@ private:
         throw EnvoyException("Unable to parse descriptor expression: " +
                             parse_status.status().ToString());
       }
-      expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(builder_->builder(), parse_status.value().expr()));
+      expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(builder_.builder(), parse_status.value().expr()));
     }
     return expressions;
   }
