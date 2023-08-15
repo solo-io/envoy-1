@@ -60,7 +60,7 @@ ActivationPtr createActivation(const StreamInfo::StreamInfo& info,
 // Creates an expression builder. The optional arena is used to enable constant folding
 // for intermediate evaluation results.
 // Throws an exception if fails to construct an expression builder.
-BuilderPtr createBuilder(Protobuf::Arena* arena);
+Filters::Common::Expr::BuilderPtr createBuilder(Protobuf::Arena* arena);
 
 // Creates an interpretable expression from a protobuf representation.
 // Throws an exception if fails to construct a runtime expression.
