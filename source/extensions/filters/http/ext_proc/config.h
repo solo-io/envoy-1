@@ -25,7 +25,7 @@ private:
   static constexpr uint64_t DefaultMaxMessageTimeoutMs = 0;
 
   // Expression builder must outlive the compiled expression.
-  BuilderPtr expr_builder_;
+  Filters::Common::Expr::BuilderPtr expr_builder_;
 
   Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
       const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& proto_config,
