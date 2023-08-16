@@ -910,8 +910,8 @@ void Filter::onReceiveMessage(std::unique_ptr<ProcessingResponse>&& r) {
       // avoided.
       logGrpcStreamInfo();
       processing_complete_ = true;
-      onFinishProcessorCalls(Grpc::Status::Ok);
       closeStream();
+      onFinishProcessorCalls(Grpc::Status::Ok);
       sendImmediateResponse(response->immediate_response());
       processing_status = absl::OkStatus();
     }

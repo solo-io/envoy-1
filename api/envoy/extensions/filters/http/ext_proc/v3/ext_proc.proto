@@ -198,7 +198,12 @@ message ExternalProcessor {
   // If not set, ``mode_override`` API in the response message will be ignored.
   bool allow_mode_override = 14;
 
-  reserved 15;
+  // If set to true, ignore the
+  // :ref:`immediate_response <envoy_v3_api_field_service.ext_proc.v3.ProcessingResponse.immediate_response>`
+  // message in an external processor response. In such case, no local reply will be sent.
+  // Instead, the stream to the external processor will be closed. There will be no
+  // more external processing for this stream from now on.
+  bool disable_immediate_response = 15;
 
   // Options related to the sending and receiving of dynamic metadata
   MetadataOptions metadata_options = 16;
