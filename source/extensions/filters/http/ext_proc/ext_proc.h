@@ -71,6 +71,10 @@ private:
   GrpcCalls encoding_processor_grpc_calls_;
 };
 
+/* const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& */
+/* initExpressions(const Protobuf::RepeatedPtrField<std::string>& matchers, */
+/*                 Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder); */
+
 class FilterConfig {
 public:
   FilterConfig(const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& config,
@@ -85,10 +89,17 @@ public:
         builder_(builder),
         request_expr_(initExpressions(config.request_attributes())),
         response_expr_(initExpressions(config.response_attributes())),
-        metadata_context_namespaces_(config.metadata_context_namespaces().begin(),
-                                     config.metadata_context_namespaces().end()),
-        typed_metadata_context_namespaces_(config.typed_metadata_context_namespaces().begin(),
-                                           config.typed_metadata_context_namespaces().end()) {}
+        /* request_expr_(initExpressions(config.request_attributes(), builder)), */
+        /* response_expr_(initExpressions(config.response_attributes(), builder)), */
+        untyped_metadata_namespaces_(
+            config.metadata_options().forwarding_namespaces().untyped().begin(),
+            config.metadata_options().forwarding_namespaces().untyped().end()),
+        typed_metadata_namespaces_(
+            config.metadata_options().forwarding_namespaces().typed().begin(),
+            config.metadata_options().forwarding_namespaces().typed().end()),
+        disable_returned_metadata_(config.metadata_options().disable_returned_metadata()),
+        bifurcate_returned_metadata_namespace_(
+            config.metadata_options().bifurcate_returned_metadata_namespace()) {}
 
   bool failureModeAllow() const { return failure_mode_allow_; }
 
@@ -106,21 +117,27 @@ public:
     return mutation_checker_;
   }
 
-  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& request_expr() const {
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>&
+  requestExpr() const {
     return request_expr_;
   }
 
-  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& response_expr() const {
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>&
+  responseExpr() const {
     return response_expr_;
   }
 
-  const std::vector<std::string>& metadataContextNamespaces() {
-    return metadata_context_namespaces_;
+  const std::vector<std::string>& metadataContextNamespaces() const {
+    return untyped_metadata_namespaces_;
   }
 
-  const std::vector<std::string>& typedMetadataContextNamespaces() {
-    return typed_metadata_context_namespaces_;
+  const std::vector<std::string>& typedMetadataContextNamespaces() const {
+    return typed_metadata_namespaces_;
   }
+
+  bool disableReturnedMetadata() const { return disable_returned_metadata_; }
+
+  bool bifurcateReturnedMetadataNamespace() const { return bifurcate_returned_metadata_namespace_; }
 
 private:
   ExtProcFilterStats generateStats(const std::string& prefix,
@@ -153,10 +170,14 @@ private:
   const Filters::Common::MutationRules::Checker mutation_checker_;
   Extensions::Filters::Common::Expr::Builder& builder_;
 
-  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> request_expr_;
-  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> response_expr_;
-  const std::vector<std::string> metadata_context_namespaces_;
-  const std::vector<std::string> typed_metadata_context_namespaces_;
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
+      request_expr_;
+  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
+      response_expr_;
+  const std::vector<std::string> untyped_metadata_namespaces_;
+  const std::vector<std::string> typed_metadata_namespaces_;
+  const bool disable_returned_metadata_;
+  const bool bifurcate_returned_metadata_namespace_;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -177,10 +198,26 @@ public:
     return grpc_service_;
   }
 
+  const absl::optional<std::vector<std::string>>& untypedMetadataNamespaces() const {
+    return untyped_metadata_namespaces_;
+  }
+  const absl::optional<std::vector<std::string>>& typedMetadataNamespaces() const {
+    return typed_metadata_namespaces_;
+  }
+  absl::optional<bool> disableReturnedMetadata() const { return disable_returned_metadata_; }
+  absl::optional<bool> bifurcateReturnedMetadataNamespace() const {
+    return bifurcate_returned_metadata_namespace_;
+  }
+
 private:
   bool disabled_;
   absl::optional<envoy::extensions::filters::http::ext_proc::v3::ProcessingMode> processing_mode_;
   absl::optional<envoy::config::core::v3::GrpcService> grpc_service_;
+
+  absl::optional<std::vector<std::string>> untyped_metadata_namespaces_;
+  absl::optional<std::vector<std::string>> typed_metadata_namespaces_;
+  absl::optional<bool> disable_returned_metadata_;
+  absl::optional<bool> bifurcate_returned_metadata_namespace_;
 };
 
 class Filter : public Logger::Loggable<Logger::Id::ext_proc>,
