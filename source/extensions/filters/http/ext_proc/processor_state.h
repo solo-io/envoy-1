@@ -166,6 +166,7 @@ public:
   mutableTrailers(envoy::service::ext_proc::v3::ProcessingRequest& request) const PURE;
 
   virtual StreamInfo::StreamInfo& streamInfo() PURE;
+  virtual Http::StreamFilterCallbacks* callbacks() PURE;
 
 protected:
   void setBodyMode(
@@ -275,9 +276,8 @@ public:
   void requestWatermark() override;
   void clearWatermark() override;
 
-  StreamInfo::StreamInfo& streamInfo() override {
-    return decoder_callbacks_->streamInfo();
-  }
+  StreamInfo::StreamInfo& streamInfo() override { return decoder_callbacks_->streamInfo(); }
+  Http::StreamFilterCallbacks* callbacks() override { return decoder_callbacks_; }
 
 private:
   void setProcessingModeInternal(
@@ -349,10 +349,8 @@ public:
   void requestWatermark() override;
   void clearWatermark() override;
 
-
-  StreamInfo::StreamInfo& streamInfo() override {
-    return encoder_callbacks_->streamInfo();
-  }
+  StreamInfo::StreamInfo& streamInfo() override { return encoder_callbacks_->streamInfo(); }
+  Http::StreamFilterCallbacks* callbacks() override { return encoder_callbacks_; }
 
 private:
   void setProcessingModeInternal(

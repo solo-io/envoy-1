@@ -71,10 +71,6 @@ private:
   GrpcCalls encoding_processor_grpc_calls_;
 };
 
-/* const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>& */
-/* initExpressions(const Protobuf::RepeatedPtrField<std::string>& matchers, */
-/*                 Extensions::Filters::Common::Expr::BuilderInstanceSharedPtr builder); */
-
 class FilterConfig {
 public:
   FilterConfig(const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& config,
@@ -89,8 +85,6 @@ public:
         builder_(builder),
         request_expr_(initExpressions(config.request_attributes())),
         response_expr_(initExpressions(config.response_attributes())),
-        /* request_expr_(initExpressions(config.request_attributes(), builder)), */
-        /* response_expr_(initExpressions(config.response_attributes(), builder)), */
         untyped_metadata_namespaces_(
             config.metadata_options().forwarding_namespaces().untyped().begin(),
             config.metadata_options().forwarding_namespaces().untyped().end()),
@@ -303,9 +297,11 @@ private:
   std::pair<bool, Http::FilterDataStatus> sendStreamChunk(ProcessorState& state, bool end_stream);
   Http::FilterDataStatus onData(ProcessorState& state, Buffer::Instance& data, bool end_stream);
   Http::FilterTrailersStatus onTrailers(ProcessorState& state, Http::HeaderMap& trailers);
-  void setEncoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
-  void setDecoderDynamicMetadata(std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
-  void addDynamicMetadata(envoy::service::ext_proc::v3::ProcessingRequest& req);
+  void setEncoderDynamicMetadata(
+      std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void setDecoderDynamicMetadata(
+      std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void addDynamicMetadata(ProcessorState& state, envoy::service::ext_proc::v3::ProcessingRequest& req);
 
   const FilterConfigSharedPtr config_;
   const ExternalProcessorClientPtr client_;
