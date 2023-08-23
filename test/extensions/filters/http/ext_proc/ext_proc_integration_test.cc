@@ -66,8 +66,9 @@ protected:
     cleanupUpstreamAndDownstream();
   }
 
-  void initializeConfig() {
-    config_helper_.addConfigModifier([this](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
+  void initializeConfig(ConfigOptions config_option = {}) {
+    config_helper_.addConfigModifier([this, config_option](
+                                         envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
       // Ensure "HTTP2 with no prior knowledge." Necessary for gRPC and for headers
       ConfigHelper::setHttp2(
           *(bootstrap.mutable_static_resources()->mutable_clusters()->Mutable(0)));
@@ -1966,9 +1967,8 @@ TEST_P(ExtProcIntegrationTest, GetAndSetRequestResponseAttributes) {
   proto_config_.mutable_request_attributes()->Add("request.path");
   proto_config_.mutable_request_attributes()->Add("request.method");
   proto_config_.mutable_request_attributes()->Add("request.scheme");
-  // TODO(jbohanon) once https://github.com/envoyproxy/envoy/pull/29028 is merged we can
-  // check against the response code directly
-  // proto_config_.mutable_response_attributes()->Add("response.code");
+  proto_config_.mutable_request_attributes()->Add("connection.mtls");
+  proto_config_.mutable_response_attributes()->Add("response.code");
   proto_config_.mutable_response_attributes()->Add("response.code_details");
 
   initializeConfig();
@@ -1981,6 +1981,7 @@ TEST_P(ExtProcIntegrationTest, GetAndSetRequestResponseAttributes) {
         EXPECT_EQ(proto_struct.fields().at("request.path").string_value(), "/");
         EXPECT_EQ(proto_struct.fields().at("request.method").string_value(), "GET");
         EXPECT_EQ(proto_struct.fields().at("request.scheme").string_value(), "http");
+        EXPECT_EQ(proto_struct.fields().at("connection.mtls").bool_value(), false);
         return true;
       });
 
@@ -1990,9 +1991,7 @@ TEST_P(ExtProcIntegrationTest, GetAndSetRequestResponseAttributes) {
       *grpc_upstreams_[0], false, [](const HttpHeaders& req, HeadersResponse&) {
         EXPECT_EQ(req.attributes().size(), 1);
         auto proto_struct = req.attributes().at("envoy.filters.http.ext_proc");
-        // TODO(jbohanon) once https://github.com/envoyproxy/envoy/pull/29028 is merged we can
-        // check against the response code directly
-        // EXPECT_EQ(proto_struct.fields().at("response.code").string_value(), "200");
+        EXPECT_EQ(proto_struct.fields().at("response.code").string_value(), "200");
         EXPECT_EQ(proto_struct.fields().at("response.code_details").string_value(), "via_upstream");
         return true;
       });
