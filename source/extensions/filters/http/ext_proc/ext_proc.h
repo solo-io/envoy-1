@@ -71,7 +71,7 @@ private:
   GrpcCalls encoding_processor_grpc_calls_;
 };
 
-class FilterConfig {
+class FilterConfig : public Logger::Loggable<Logger::Id::ext_proc> {
 public:
   FilterConfig(const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& config,
                const std::chrono::milliseconds message_timeout,

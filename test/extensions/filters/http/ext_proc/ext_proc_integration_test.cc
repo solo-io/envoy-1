@@ -1958,6 +1958,7 @@ TEST_P(ExtProcIntegrationTest, RequestMessageNewTimeoutNegativeTestTimeoutNotAcc
   newTimeoutWrongConfigTest(500);
 }
 
+#if defined(USE_CEL_PARSER)
 // Test the filter using the default configuration by connecting to
 // an ext_proc server that responds to the request_headers message
 // by requesting to modify the request headers.
@@ -1998,5 +1999,6 @@ TEST_P(ExtProcIntegrationTest, GetAndSetRequestResponseAttributes) {
 
   verifyDownstreamResponse(*response, 200);
 }
+#endif
 
 } // namespace Envoy
