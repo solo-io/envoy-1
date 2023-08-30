@@ -1,5 +1,6 @@
 #include "source/extensions/filters/http/ext_proc/ext_proc.h"
 
+#include <cstdio>
 #include "envoy/config/common/mutation_rules/v3/mutation_rules.pb.h"
 
 #include "source/common/http/utility.h"
@@ -8,6 +9,10 @@
 
 #include "absl/strings/str_format.h"
 #include <cstdio>
+
+#if defined(USE_CEL_PARSER)
+#include "parser/parser.h"
+#endif
 
 namespace Envoy {
 namespace Extensions {
@@ -84,6 +89,7 @@ ExtProcLoggingInfo::grpcCalls(envoy::config::core::v3::TrafficDirection traffic_
 absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
 FilterConfig::initExpressions(const Protobuf::RepeatedPtrField<std::string>& matchers) const {
   absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> expressions;
+#if defined(USE_CEL_PARSER)
   for (const auto& matcher : matchers) {
     auto parse_status = google::api::expr::parser::Parse(matcher);
     if (!parse_status.ok()) {
@@ -93,6 +99,11 @@ FilterConfig::initExpressions(const Protobuf::RepeatedPtrField<std::string>& mat
     expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(
                                      builder_->builder(), parse_status.value().expr()));
   }
+#else
+  ENVOY_LOG(warn, "CEL expression parsing is not available for use in this environment."
+                  " Attempted to parse " +
+                      std::to_string(matchers.size()) + " expressions");
+#endif
   return expressions;
 }
 
