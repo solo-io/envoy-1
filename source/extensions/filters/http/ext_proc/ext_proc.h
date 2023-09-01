@@ -140,7 +140,7 @@ private:
     return {ALL_EXT_PROC_FILTER_STATS(POOL_COUNTER_PREFIX(scope, final_prefix))};
   }
 
-  const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
+  absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
   initExpressions(const Protobuf::RepeatedPtrField<std::string>&
                       matchers) {
     absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> expressions;
