@@ -141,19 +141,7 @@ private:
   }
 
   absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
-  initExpressions(const Protobuf::RepeatedPtrField<std::string>&
-                      matchers) {
-    absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr> expressions;
-    for (const auto& matcher : matchers) {
-        auto parse_status = google::api::expr::parser::Parse(matcher);
-      if (!parse_status.ok()) {
-        throw EnvoyException("Unable to parse descriptor expression: " +
-                            parse_status.status().ToString());
-      }
-      expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(builder_, parse_status.value().expr()));
-    }
-    return expressions;
-  }
+  initExpressions(const Protobuf::RepeatedPtrField<std::string>& matchers) const;
 
   const bool failure_mode_allow_;
   const std::chrono::milliseconds message_timeout_;
