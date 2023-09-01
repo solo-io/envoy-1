@@ -97,7 +97,7 @@ FilterConfig::initExpressions(const Protobuf::RepeatedPtrField<std::string>& mat
                            parse_status.status().ToString());
     }
     expressions.emplace(matcher, Extensions::Filters::Common::Expr::createExpression(
-                                     builder_->builder(), parse_status.value().expr()));
+                                     builder_, parse_status.value().expr()));
   }
 #else
   ENVOY_LOG(warn, "CEL expression parsing is not available for use in this environment."
