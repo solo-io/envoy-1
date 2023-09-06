@@ -67,6 +67,15 @@ protected:
   }
 
   void initializeConfig(ConfigOptions config_option = {}) {
+    scoped_runtime_.mergeValues(
+        {{"envoy.reloadable_features.send_header_raw_value", header_raw_value_}});
+    scoped_runtime_.mergeValues(
+        {{"envoy_reloadable_features_immediate_response_use_filter_mutation_rule",
+          filter_mutation_rule_}});
+    scoped_runtime_.mergeValues(
+        {{"envoy_reloadable_features_ext_proc_disable_response_processing_on_local_reply",
+          disable_on_local_reply_}});
+
     config_helper_.addConfigModifier([this, config_option](
                                          envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
       // Ensure "HTTP2 with no prior knowledge." Necessary for gRPC and for headers
@@ -361,6 +370,8 @@ protected:
   std::vector<FakeUpstream*> grpc_upstreams_;
   FakeHttpConnectionPtr processor_connection_;
   FakeStreamPtr processor_stream_;
+  std::string filter_mutation_rule_{"false"};
+  std::string disable_on_local_reply_{"false"};
 };
 
 INSTANTIATE_TEST_SUITE_P(

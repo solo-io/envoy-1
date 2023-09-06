@@ -394,6 +394,9 @@ public:
   void requestWatermark() override;
   void clearWatermark() override;
 
+  void inLocalReply(bool in_local_reply) { in_local_reply_ = in_local_reply; };
+  bool inLocalReply() const { return in_local_reply_; };
+
   StreamInfo::StreamInfo& streamInfo() override { return encoder_callbacks_->streamInfo(); }
   Http::StreamFilterCallbacks* callbacks() override { return encoder_callbacks_; }
 
@@ -402,6 +405,8 @@ private:
       const envoy::extensions::filters::http::ext_proc::v3::ProcessingMode& mode);
 
   Http::StreamEncoderFilterCallbacks* encoder_callbacks_{};
+
+  bool in_local_reply_{};
 };
 
 } // namespace ExternalProcessing
