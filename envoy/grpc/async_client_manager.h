@@ -72,6 +72,7 @@ class AsyncClientManager {
 public:
   virtual ~AsyncClientManager() = default;
 
+  // TODO(diazalan) deprecate old getOrCreateRawAsyncClient once all filters have been transitioned
   /**
    * Create a Grpc::RawAsyncClient. The async client is cached thread locally and shared across
    * different filter instances.
@@ -86,6 +87,22 @@ public:
   virtual RawAsyncClientSharedPtr
   getOrCreateRawAsyncClient(const envoy::config::core::v3::GrpcService& grpc_service,
                             Stats::Scope& scope, bool skip_cluster_check) PURE;
+
+  /**
+   * Create a Grpc::RawAsyncClient. The async client is cached thread locally and shared across
+   * different filter instances.
+   * @param grpc_service Envoy::Grpc::GrpcServiceConfigWithHashKey which contains config and
+   * hashkey.
+   * @param scope stats scope.
+   * @param skip_cluster_check if set to true skips checks for cluster presence and being statically
+   * configured.
+   * @param cache_option always use cache or use cache when runtime is enabled.
+   * @return RawAsyncClientPtr a grpc async client.
+   * @throws EnvoyException when grpc_service validation fails.
+   */
+  virtual RawAsyncClientSharedPtr
+  getOrCreateRawAsyncClientWithHashKey(const GrpcServiceConfigWithHashKey& grpc_service,
+                                       Stats::Scope& scope, bool skip_cluster_check) PURE;
 
   /**
    * Create a Grpc::AsyncClients factory for a service. Validation of the service is performed and
