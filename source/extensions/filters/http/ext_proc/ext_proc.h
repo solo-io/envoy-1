@@ -23,6 +23,8 @@
 #include "source/extensions/filters/http/ext_proc/client.h"
 #include "source/extensions/filters/http/ext_proc/processor_state.h"
 
+#include "source/common/runtime/runtime_features.h"
+
 namespace Envoy {
 namespace Extensions {
 namespace HttpFilters {
