@@ -19,6 +19,10 @@ export GOPROXY="${go_proxy:-}"
 
 if is_windows; then
   [[ -z "${IMAGE_NAME}" ]] && IMAGE_NAME="envoyproxy/envoy-build-windows2019"
+  # Container networking is unreliable in the most recently built images, pin Windows to a known
+  # good container. This can create a mismatch between the host environment, and the toolchain
+  # environment.
+  ENVOY_BUILD_SHA=41c5a05d708972d703661b702a63ef5060125c33
   # TODO(sunjayBhatia): Currently ENVOY_DOCKER_OPTIONS is ignored on Windows because
   # CI sets it to a Linux-specific value. Undo this once https://github.com/envoyproxy/envoy/issues/13272
   # is resolved.
@@ -60,12 +64,21 @@ else
           && usermod -a -G pcap envoybuild \
           && chown envoybuild:envoygroup /build \
           && chown envoybuild /proc/self/fd/2 \
+          && curl -fsSL https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - \
+          && echo \"deb https://apt.kitware.com/ubuntu/ focal main\" >> /etc/apt/sources.list \
+          && apt-get -qq update -y \
+          && apt-get -qq install --no-install-recommends cmake ninja-build \
           && sudo -EHs -u envoybuild bash -c 'cd /source && $*'")
 fi
 
 # The IMAGE_ID defaults to the CI hash but can be set to an arbitrary image ID (found with 'docker
 # images').
-[[ -z "${IMAGE_ID}" ]] && IMAGE_ID="${ENVOY_BUILD_SHA}"
+if [[ -z "${IMAGE_ID}" ]]; then
+    IMAGE_ID="${ENVOY_BUILD_SHA}"
+    if ! is_windows && [[ -n "$ENVOY_BUILD_CONTAINER_SHA" ]]; then
+        IMAGE_ID="${ENVOY_BUILD_SHA}@sha256:${ENVOY_BUILD_CONTAINER_SHA}"
+    fi
+fi
 [[ -z "${ENVOY_DOCKER_BUILD_DIR}" ]] && ENVOY_DOCKER_BUILD_DIR="${DEFAULT_ENVOY_DOCKER_BUILD_DIR}"
 # Replace backslash with forward slash for Windows style paths
 ENVOY_DOCKER_BUILD_DIR="${ENVOY_DOCKER_BUILD_DIR//\\//}"
@@ -102,8 +115,6 @@ fi
 docker run --rm \
        "${ENVOY_DOCKER_OPTIONS[@]}" \
        "${VOLUMES[@]}" \
-       -e AZP_BRANCH \
-       -e AZP_COMMIT_SHA \
        -e HTTP_PROXY \
        -e HTTPS_PROXY \
        -e NO_PROXY \
@@ -113,6 +124,9 @@ docker run --rm \
        -e BAZEL_EXTRA_TEST_OPTIONS \
        -e BAZEL_FAKE_SCM_REVISION \
        -e BAZEL_REMOTE_CACHE \
+       -e BAZEL_STARTUP_EXTRA_OPTIONS \
+       -e CI_BRANCH \
+       -e CI_SHA1 \
        -e CI_TARGET_BRANCH \
        -e DOCKERHUB_USERNAME \
        -e DOCKERHUB_PASSWORD \
@@ -134,12 +148,12 @@ docker run --rm \
        -e ENVOY_HEAD_REF \
        -e ENVOY_PUBLISH_DRY_RUN \
        -e ENVOY_REPO \
+       -e ENVOY_TARBALL_DIR \
        -e SYSTEM_PULLREQUEST_PULLREQUESTNUMBER \
        -e GCS_ARTIFACT_BUCKET \
        -e GITHUB_TOKEN \
        -e GITHUB_APP_ID \
        -e GITHUB_INSTALL_ID \
-       -e NETLIFY_TRIGGER_URL \
        -e BUILD_SOURCEBRANCHNAME \
        -e BAZELISK_BASE_URL \
        -e ENVOY_BUILD_ARCH \
