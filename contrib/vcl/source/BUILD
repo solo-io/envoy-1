@@ -1,3 +1,4 @@
+load("@base_pip3//:requirements.bzl", "requirement")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load(
     "//bazel:envoy_build_system.bzl",
@@ -6,7 +7,6 @@ load(
     "envoy_cmake",
     "envoy_contrib_package",
 )
-load("@base_pip3//:requirements.bzl", "requirement")
 
 licenses(["notice"])  # Apache 2
 
@@ -82,7 +82,7 @@ genrule(
         && find . -name "*.a" | xargs -I{} cp -a {} $$EXTERNAL_DIR \
         && find . -name "vppcom.h" | xargs -I{} cp -a {} $$EXTERNAL_DIR
     """,
-    exec_tools = [":build"],
+    tools = [":build"],
 )
 
 envoy_cc_library(
