@@ -139,7 +139,16 @@ public:
         allowed_headers_(initHeaderMatchers(config.forward_rules().allowed_headers())),
         disallowed_headers_(initHeaderMatchers(config.forward_rules().disallowed_headers())),
         builder_(builder), request_expr_(initExpressions(config.request_attributes())),
-        response_expr_(initExpressions(config.response_attributes())) {}
+        response_expr_(initExpressions(config.response_attributes()),
+        untyped_forwarding_namespaces_(
+            config.metadata_options().forwarding_namespaces().untyped().begin(),
+            config.metadata_options().forwarding_namespaces().untyped().end()),
+        typed_forwarding_namespaces_(
+            config.metadata_options().forwarding_namespaces().typed().begin(),
+            config.metadata_options().forwarding_namespaces().typed().end()),
+        untyped_receiving_namespaces_(
+            config.metadata_options().receiving_namespaces().untyped().begin(),
+            config.metadata_options().receiving_namespaces().untyped().end()) {}
 
   bool failureModeAllow() const { return failure_mode_allow_; }
 
@@ -176,6 +185,16 @@ public:
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>&
   responseExpr() const {
     return response_expr_;
+  const std::vector<std::string>& untypedForwardingMetadataNamespaces() const {
+    return untyped_forwarding_namespaces_;
+  }
+
+  const std::vector<std::string>& typedForwardingMetadataNamespaces() const {
+    return typed_forwarding_namespaces_;
+  }
+
+  const std::vector<std::string>& untypedReceivingMetadataNamespaces() const {
+    return untyped_receiving_namespaces_;
   }
 
 private:
@@ -220,6 +239,9 @@ private:
       request_expr_;
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>
       response_expr_;
+  const std::vector<std::string> untyped_forwarding_namespaces_;
+  const std::vector<std::string> typed_forwarding_namespaces_;
+  const std::vector<std::string> untyped_receiving_namespaces_;
 };
 
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
@@ -240,10 +262,24 @@ public:
     return grpc_service_;
   }
 
+  const absl::optional<std::vector<std::string>>& untypedForwardingMetadataNamespaces() const {
+    return untyped_forwarding_namespaces_;
+  }
+  const absl::optional<std::vector<std::string>>& typedForwardingMetadataNamespaces() const {
+    return typed_forwarding_namespaces_;
+  }
+  const absl::optional<std::vector<std::string>>& untypedReceivingMetadataNamespaces() const {
+    return untyped_receiving_namespaces_;
+  }
+
 private:
   bool disabled_;
   absl::optional<envoy::extensions::filters::http::ext_proc::v3::ProcessingMode> processing_mode_;
   absl::optional<envoy::config::core::v3::GrpcService> grpc_service_;
+
+  absl::optional<std::vector<std::string>> untyped_forwarding_namespaces_;
+  absl::optional<std::vector<std::string>> typed_forwarding_namespaces_;
+  absl::optional<std::vector<std::string>> untyped_receiving_namespaces_;
 };
 
 class Filter : public Logger::Loggable<Logger::Id::ext_proc>,
@@ -265,8 +301,15 @@ public:
   Filter(const FilterConfigSharedPtr& config, ExternalProcessorClientPtr&& client,
          const envoy::config::core::v3::GrpcService& grpc_service)
       : config_(config), client_(std::move(client)), stats_(config->stats()),
-        grpc_service_(grpc_service), decoding_state_(*this, config->processingMode()),
-        encoding_state_(*this, config->processingMode()) {}
+        grpc_service_(grpc_service), config_with_hash_key_(grpc_service),
+        decoding_state_(*this, config->processingMode(),
+                        config->untypedForwardingMetadataNamespaces(),
+                        config->typedForwardingMetadataNamespaces(),
+                        config->untypedReceivingMetadataNamespaces()),
+        encoding_state_(*this, config->processingMode(),
+                        config->untypedForwardingMetadataNamespaces(),
+                        config->typedForwardingMetadataNamespaces(),
+                        config->untypedReceivingMetadataNamespaces()) {}
 
   const FilterConfig& config() const { return *config_; }
 
@@ -307,6 +350,9 @@ public:
 
   void sendTrailers(ProcessorState& state, const Http::HeaderMap& trailers);
 
+  const ProcessorState& encodingState() { return encoding_state_; }
+  const ProcessorState& decodingState() { return decoding_state_; }
+
 private:
   void mergePerRouteConfig();
   StreamOpenState openStream();
@@ -328,6 +374,15 @@ private:
   std::pair<bool, Http::FilterDataStatus> sendStreamChunk(ProcessorState& state, bool end_stream);
   Http::FilterDataStatus onData(ProcessorState& state, Buffer::Instance& data, bool end_stream);
   Http::FilterTrailersStatus onTrailers(ProcessorState& state, Http::HeaderMap& trailers);
+  void
+  setDynamicMetadata(Http::StreamFilterCallbacks* cb, const ProcessorState& state,
+                     std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void setEncoderDynamicMetadata(
+      std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void setDecoderDynamicMetadata(
+      std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>& response);
+  void addDynamicMetadata(ProcessorState& state,
+                          envoy::service::ext_proc::v3::ProcessingRequest& req);
 
   const FilterConfigSharedPtr config_;
   const ExternalProcessorClientPtr client_;

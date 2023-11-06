@@ -28,6 +28,7 @@
 #include "test/mocks/stream_info/mocks.h"
 #include "test/mocks/tracing/mocks.h"
 #include "test/mocks/upstream/cluster_manager.h"
+#include "test/proto/helloworld.pb.h"
 #include "test/test_common/printers.h"
 #include "test/test_common/test_runtime.h"
 #include "test/test_common/utility.h"
@@ -85,6 +86,16 @@ protected:
     EXPECT_CALL(decoder_callbacks_, dispatcher()).WillRepeatedly(ReturnRef(dispatcher_));
     EXPECT_CALL(decoder_callbacks_, route()).WillRepeatedly(Return(route_));
     EXPECT_CALL(decoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
+    EXPECT_CALL(encoder_callbacks_, streamInfo()).WillRepeatedly(ReturnRef(stream_info_));
+    EXPECT_CALL(stream_info_, dynamicMetadata()).WillRepeatedly(ReturnRef(dynamic_metadata_));
+    EXPECT_CALL(stream_info_, setDynamicMetadata(_, _))
+        .Times(AnyNumber())
+        .WillRepeatedly(Invoke(this, &HttpFilterTest::doSetDynamicMetadata));
+
+    EXPECT_CALL(decoder_callbacks_, connection())
+        .WillRepeatedly(Return(OptRef<const Network::Connection>{connection_}));
+    EXPECT_CALL(encoder_callbacks_, connection())
+        .WillRepeatedly(Return(OptRef<const Network::Connection>{connection_}));
 
     EXPECT_CALL(async_client_stream_info_, bytesSent()).WillRepeatedly(Return(100));
     EXPECT_CALL(async_client_stream_info_, bytesReceived()).WillRepeatedly(Return(200));
@@ -182,6 +193,10 @@ protected:
     EXPECT_CALL(*stream, close()).WillOnce(Invoke(this, &HttpFilterTest::doSendClose));
     return stream;
   }
+
+  void doSetDynamicMetadata(const std::string& ns, const ProtobufWkt::Struct& val) {
+    (*dynamic_metadata_.mutable_filter_metadata())[ns] = val;
+  };
 
   void doSend(ProcessingRequest&& request, Unused) { last_request_ = std::move(request); }
 
@@ -470,7 +485,7 @@ protected:
   ExternalProcessorCallbacks* stream_callbacks_ = nullptr;
   ProcessingRequest last_request_;
   bool server_closed_stream_ = false;
-  NiceMock<Stats::MockIsolatedStatsStore> stats_store_;
+  testing::NiceMock<Stats::MockIsolatedStatsStore> stats_store_;
   FilterConfigSharedPtr config_;
   std::shared_ptr<Filter> filter_;
   testing::NiceMock<Event::MockDispatcher> dispatcher_;
@@ -486,6 +501,8 @@ protected:
   std::vector<Event::MockTimer*> timers_;
   TestScopedRuntime scoped_runtime_;
   Envoy::Event::SimulatedTimeSystem* test_time_;
+  envoy::config::core::v3::Metadata dynamic_metadata_;
+  testing::NiceMock<Network::MockConnection> connection_;
 };
 
 // Using the default configuration, test the filter with a processor that
