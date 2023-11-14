@@ -202,6 +202,7 @@ void Filter::onDestroy() {
 
 FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
                                       Http::RequestOrResponseHeaderMap& headers, bool end_stream) {
+  if(Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_send_headers_message")) {
   switch (openStream()) {
   case StreamOpenState::Error:
     return FilterHeadersStatus::StopIteration;
@@ -211,6 +212,7 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
     // Fall through
     break;
   }
+  }
 
   state.setHeaders(&headers);
   state.setHasNoBody(end_stream);
@@ -219,6 +221,12 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
   MutationUtils::headersToProto(headers, config_->allowedHeaders(), config_->disallowedHeaders(),
                                 *headers_req->mutable_headers());
   headers_req->set_end_of_stream(end_stream);
+
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_send_headers_message")) {
+    ENVOY_LOG(debug, "skipping sending headers message");
+    return FilterHeadersStatus::Continue;
+  }
+
   state.onStartProcessorCall(std::bind(&Filter::onMessageTimeout, this), config_->messageTimeout(),
                              ProcessorState::CallbackState::HeadersCallback);
   ENVOY_LOG(debug, "Sending headers message");
