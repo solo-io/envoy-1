@@ -21,6 +21,9 @@ using envoy::service::ext_proc::v3::TrailersResponse;
 void ProcessorState::onStartProcessorCall(Event::TimerCb cb, std::chrono::milliseconds timeout,
                                           CallbackState callback_state) {
   callback_state_ = callback_state;
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_timers")) {
+    return;
+  }
   if (!message_timer_) {
     message_timer_ = filter_callbacks_->dispatcher().createTimer(cb);
   }
@@ -33,6 +36,10 @@ void ProcessorState::onStartProcessorCall(Event::TimerCb cb, std::chrono::millis
 
 void ProcessorState::onFinishProcessorCall(Grpc::Status::GrpcStatus call_status,
                                            CallbackState next_state) {
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_timers")) {
+    callback_state_ = next_state;
+    return;
+  }
   stopMessageTimer();
 
   if (call_start_time_.has_value()) {
@@ -47,6 +54,9 @@ void ProcessorState::onFinishProcessorCall(Grpc::Status::GrpcStatus call_status,
 }
 
 void ProcessorState::stopMessageTimer() {
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_timers")) {
+    return;
+  }
   if (message_timer_) {
     ENVOY_LOG(debug, "Traffic direction {}: timer disabled", trafficDirectionDebugStr());
     message_timer_->disableTimer();
@@ -57,6 +67,9 @@ void ProcessorState::stopMessageTimer() {
 // Do not change call_start_time_ since that call has not been responded yet.
 // Do not change callback_state_ either.
 bool ProcessorState::restartMessageTimer(const uint32_t message_timeout_ms) {
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_timers")) {
+    return false;
+  }
   if (message_timer_ && message_timer_->enabled() && !new_timeout_received_) {
     ENVOY_LOG(debug,
               "Traffic direction {}: Server needs more time to process the request, start a "

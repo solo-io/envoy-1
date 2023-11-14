@@ -94,6 +94,7 @@ RUNTIME_GUARD(envoy_restart_features_use_apple_api_for_dns_lookups);
 RUNTIME_GUARD(envoy_reloadable_features_ext_proc_metadata);
 RUNTIME_GUARD(envoy_reloadable_features_ext_proc_attributes);
 RUNTIME_GUARD(envoy_reloadable_features_ext_proc_send_headers_message);
+RUNTIME_GUARD(envoy_reloadable_features_ext_proc_timers);
 
 // Begin false flags. These should come with a TODO to flip true.
 // Sentinel and test flag.
