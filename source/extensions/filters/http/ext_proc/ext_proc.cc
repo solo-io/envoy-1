@@ -216,6 +216,7 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
                                       Http::RequestOrResponseHeaderMap& headers,
                                       bool end_stream,
                                       absl::optional<google::protobuf::Struct> proto) {
+  if(Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_send_headers_message")) {
   switch (openStream()) {
   case StreamOpenState::Error:
     return FilterHeadersStatus::StopIteration;
@@ -224,6 +225,7 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
   case StreamOpenState::Ok:
     // Fall through
     break;
+  }
   }
 
   state.setHeaders(&headers);
@@ -236,6 +238,12 @@ FilterHeadersStatus Filter::onHeaders(ProcessorState& state,
   if (proto.has_value()) {
     (*headers_req->mutable_attributes())[FilterName] = proto.value();
   }
+
+  if(!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_send_headers_message")) {
+    ENVOY_LOG(debug, "skipping sending headers message");
+    return FilterHeadersStatus::Continue;
+  }
+
   state.onStartProcessorCall(std::bind(&Filter::onMessageTimeout, this), config_->messageTimeout(),
                              ProcessorState::CallbackState::HeadersCallback);
   ENVOY_LOG(debug, "Sending headers message");
@@ -298,9 +306,14 @@ FilterHeadersStatus Filter::decodeHeaders(RequestHeaderMap& headers, bool end_st
     return FilterHeadersStatus::Continue;
   }
 
-  auto activation_ptr = Filters::Common::Expr::createActivation(decoding_state_.streamInfo(),
-                                                                &headers, nullptr, nullptr);
-  auto proto = evaluateAttributes(std::move(activation_ptr), config_->requestExpr());
+  absl::optional<google::protobuf::Struct> proto;
+  if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_attributes")) {
+    auto activation_ptr = Filters::Common::Expr::createActivation(decoding_state_.streamInfo(),
+                                                                  &headers, nullptr, nullptr);
+    proto = evaluateAttributes(std::move(activation_ptr), config_->requestExpr());
+  } else {
+    ENVOY_LOG(info, "skipping attributes in decodeHeaders");
+  }
 
   const auto status = onHeaders(decoding_state_, headers, end_stream, proto);
   ENVOY_LOG(trace, "decodeHeaders returning {}", static_cast<int>(status));
@@ -595,9 +608,14 @@ FilterHeadersStatus Filter::encodeHeaders(ResponseHeaderMap& headers, bool end_s
     return FilterHeadersStatus::Continue;
   }
 
-  auto activation_ptr = Filters::Common::Expr::createActivation(encoding_state_.streamInfo(),
-                                                                nullptr, &headers, nullptr);
-  auto proto = evaluateAttributes(std::move(activation_ptr), config_->responseExpr());
+  absl::optional<google::protobuf::Struct> proto;
+  if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_attributes")) {
+    auto activation_ptr = Filters::Common::Expr::createActivation(encoding_state_.streamInfo(),
+                                                                  nullptr, &headers, nullptr);
+    proto = evaluateAttributes(std::move(activation_ptr), config_->responseExpr());
+  } else {
+    ENVOY_LOG(info, "skipping attributes in encodeHeaders");
+  }
 
   const auto status = onHeaders(encoding_state_, headers, end_stream, proto);
   ENVOY_LOG(trace, "encodeHeaders returns {}", static_cast<int>(status));
@@ -674,6 +692,12 @@ void Filter::onNewTimeout(const uint32_t message_timeout_ms) {
 }
 
 void Filter::addDynamicMetadata(ProcessorState& state, ProcessingRequest& req) {
+
+  if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_metadata")) {
+    ENVOY_LOG(info, "skipping adding metadata");
+    return;
+  }
+
   // get the callbacks from the ProcessorState. This will be the appropriate
   // callbacks for the current state of the filter
   auto* cb = state.callbacks();
@@ -725,6 +749,11 @@ void Filter::addDynamicMetadata(ProcessorState& state, ProcessingRequest& req) {
 
 void Filter::setDynamicMetadata(Http::StreamFilterCallbacks* cb, const ProcessorState& state,
                                 std::unique_ptr<ProcessingResponse>& response) {
+  if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.ext_proc_metadata")) {
+    ENVOY_LOG(info, "skipping setting metadata from response");
+    return;
+  }
+
   bool has_receiving_namespaces = state.untypedReceivingMetadataNamespaces().size() > 0;
   if (!(has_receiving_namespaces && response->has_dynamic_metadata())) {
     return;
