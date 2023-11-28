@@ -66,7 +66,8 @@ DEFINE_PROTO_FUZZER(
   try {
     config = std::make_shared<ExternalProcessing::FilterConfig>(
         proto_config, std::chrono::milliseconds(200), 200, *stats_store.rootScope(),
-        "ext_proc_prefix");
+        "ext_proc_prefix",
+        Envoy::Extensions::Filters::Common::Expr::BuilderInstance(Envoy::Extensions::Filters::Common::Expr::createBuilder(nullptr)).builder());
   } catch (const EnvoyException& e) {
     ENVOY_LOG_MISC(debug, "EnvoyException during ext_proc filter config validation: {}", e.what());
     return;

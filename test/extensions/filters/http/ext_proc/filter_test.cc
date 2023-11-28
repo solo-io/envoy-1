@@ -129,7 +129,8 @@ protected:
     if (!yaml.empty()) {
       TestUtility::loadFromYaml(yaml, proto_config);
     }
-    config_.reset(new FilterConfig(proto_config, 200ms, 10000, *stats_store_.rootScope(), "", std::make_shared<Envoy::Extensions::Filters::Common::Expr::BuilderInstance>(Envoy::Extensions::Filters::Common::Expr::createBuilder(nullptr))));
+    config_.reset(new FilterConfig(proto_config, 200ms, 10000, *stats_store_.rootScope(), "",
+          Envoy::Extensions::Filters::Common::Expr::BuilderInstance(Envoy::Extensions::Filters::Common::Expr::createBuilder(nullptr)).builder()));
     filter_ = std::make_unique<Filter>(config_, std::move(client_), proto_config.grpc_service());
     filter_->setEncoderFilterCallbacks(encoder_callbacks_);
     EXPECT_CALL(encoder_callbacks_, encoderBufferLimit()).WillRepeatedly(Return(BufferSize));
