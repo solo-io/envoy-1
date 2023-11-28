@@ -72,7 +72,7 @@ using BuilderInstanceSharedPtr = std::shared_ptr<BuilderInstance>;
 // Creates an expression builder. The optional arena is used to enable constant folding
 // for intermediate evaluation results.
 // Throws an exception if fails to construct an expression builder.
-BuilderPtr createBuilder(Protobuf::Arena* arena);
+Filters::Common::Expr::BuilderPtr createBuilder(Protobuf::Arena* arena);
 
 // Gets the singleton expression builder. Must be called on the main thread.
 BuilderInstanceSharedPtr getBuilder(Server::Configuration::CommonFactoryContext& context);

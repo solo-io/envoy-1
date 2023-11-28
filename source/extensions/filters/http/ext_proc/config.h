@@ -6,6 +6,7 @@
 #include "envoy/extensions/filters/http/ext_proc/v3/ext_proc.pb.validate.h"
 
 #include "source/extensions/filters/http/common/factory_base.h"
+#include "source/extensions/filters/common/expr/evaluator.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -23,13 +24,16 @@ private:
   static constexpr uint64_t DefaultMessageTimeoutMs = 200;
   static constexpr uint64_t DefaultMaxMessageTimeoutMs = 0;
 
+  // Expression builder must outlive the compiled expression.
+  Filters::Common::Expr::BuilderPtr expr_builder_;
+
   Http::FilterFactoryCb createFilterFactoryFromProtoTyped(
       const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& proto_config,
       const std::string& stats_prefix, Server::Configuration::FactoryContext& context) override;
 
   Router::RouteSpecificFilterConfigConstSharedPtr createRouteSpecificFilterConfigTyped(
       const envoy::extensions::filters::http::ext_proc::v3::ExtProcPerRoute& proto_config,
-      Server::Configuration::ServerFactoryContext& context,
+      Server::Configuration::ServerFactoryContext&,
       ProtobufMessage::ValidationVisitor& validator) override;
 
   Http::FilterFactoryCb createFilterFactoryFromProtoWithServerContextTyped(

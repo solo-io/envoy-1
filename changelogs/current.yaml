@@ -19,12 +19,15 @@ behavior_changes:
     By default this limit is disabled.
 
 bug_fixes:
-- area: connection limit
+# *Changes expected to improve the state of the world and are unlikely to have negative effects*
+
+removed_config_or_runtime:
+# *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`
+
+new_features:
+- area: tap
   change: |
-    fixed a use-after-free bug in the connection limit filter.
-- area: tls
-  change: |
-    fixed a bug where handshake may fail when both private key provider and cert validation are set.
-- area: docker/publishing
-  change: |
-    Update base images to resolve various glibc vulnerabilities.
+    added :ref:`custom_sink <envoy_v3_api_field_config.tap.v3.OutputSink.custom_sink>` type to enable writing tap data
+    out to a custom sink extension.
+
+deprecated:

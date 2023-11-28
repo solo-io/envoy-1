@@ -84,7 +84,7 @@ ActivationPtr createActivation(const StreamInfo::StreamInfo& info,
                                             response_trailers);
 }
 
-BuilderPtr createBuilder(Protobuf::Arena* arena) {
+Extensions::Filters::Common::Expr::BuilderPtr createBuilder(Protobuf::Arena* arena) {
   ASSERT_IS_MAIN_OR_TEST_THREAD();
   google::api::expr::runtime::InterpreterOptions options;
 
