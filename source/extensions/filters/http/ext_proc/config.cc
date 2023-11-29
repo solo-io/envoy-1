@@ -11,9 +11,9 @@ namespace ExternalProcessing {
 Http::FilterFactoryCb ExternalProcessingFilterConfig::createFilterFactoryFromProtoTyped(
     const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& proto_config,
     const std::string& stats_prefix, Server::Configuration::FactoryContext& context) {
-    if (expr_builder_ == nullptr) {
-      expr_builder_ = Extensions::Filters::Common::Expr::createBuilder(nullptr);
-    }
+  if (expr_builder_ == nullptr) {
+    expr_builder_ = Extensions::Filters::Common::Expr::createBuilder(nullptr);
+  }
   const uint32_t message_timeout_ms =
       PROTOBUF_GET_MS_OR_DEFAULT(proto_config, message_timeout, DefaultMessageTimeoutMs);
   const uint32_t max_message_timeout_ms =
@@ -43,6 +43,9 @@ Http::FilterFactoryCb
 ExternalProcessingFilterConfig::createFilterFactoryFromProtoWithServerContextTyped(
     const envoy::extensions::filters::http::ext_proc::v3::ExternalProcessor& proto_config,
     const std::string& stats_prefix, Server::Configuration::ServerFactoryContext& server_context) {
+  if (expr_builder_ == nullptr) {
+    expr_builder_ = Extensions::Filters::Common::Expr::createBuilder(nullptr);
+  }
   const uint32_t message_timeout_ms =
       PROTOBUF_GET_MS_OR_DEFAULT(proto_config, message_timeout, DefaultMessageTimeoutMs);
   const uint32_t max_message_timeout_ms =
