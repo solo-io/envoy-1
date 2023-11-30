@@ -139,7 +139,7 @@ public:
         allowed_headers_(initHeaderMatchers(config.forward_rules().allowed_headers())),
         disallowed_headers_(initHeaderMatchers(config.forward_rules().disallowed_headers())),
         builder_(builder), request_expr_(initExpressions(config.request_attributes())),
-        response_expr_(initExpressions(config.response_attributes()),
+        response_expr_(initExpressions(config.response_attributes())),
         untyped_forwarding_namespaces_(
             config.metadata_options().forwarding_namespaces().untyped().begin(),
             config.metadata_options().forwarding_namespaces().untyped().end()),
@@ -185,6 +185,8 @@ public:
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>&
   responseExpr() const {
     return response_expr_;
+  }
+
   const std::vector<std::string>& untypedForwardingMetadataNamespaces() const {
     return untyped_forwarding_namespaces_;
   }
@@ -331,13 +333,11 @@ public:
   Http::FilterTrailersStatus encodeTrailers(Http::ResponseTrailerMap& trailers) override;
 
   // ExternalProcessorCallbacks
-
   void onReceiveMessage(
       std::unique_ptr<envoy::service::ext_proc::v3::ProcessingResponse>&& response) override;
-
   void onGrpcError(Grpc::Status::GrpcStatus error) override;
-
   void onGrpcClose() override;
+  void logGrpcStreamInfo() override;
 
   void onMessageTimeout();
   void onNewTimeout(const ProtobufWkt::Duration& override_message_timeout);
@@ -389,6 +389,7 @@ private:
   ExtProcFilterStats stats_;
   ExtProcLoggingInfo* logging_info_;
   envoy::config::core::v3::GrpcService grpc_service_;
+  Grpc::GrpcServiceConfigWithHashKey config_with_hash_key_;
 
   // The state of the filter on both the encoding and decoding side.
   DecodingProcessorState decoding_state_;
