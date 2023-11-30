@@ -187,6 +187,7 @@ public:
   const absl::flat_hash_map<std::string, Extensions::Filters::Common::Expr::ExpressionPtr>&
   responseExpr() const {
     return response_expr_;
+  }
   const std::vector<std::string>& untypedForwardingMetadataNamespaces() const {
     return untyped_forwarding_namespaces_;
   }
