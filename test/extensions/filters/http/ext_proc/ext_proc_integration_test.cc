@@ -1294,30 +1294,6 @@ TEST_P(ExtProcIntegrationTest, GetAndRespondImmediately) {
   EXPECT_THAT(response->headers(), SingleHeaderValueIs("content-type", "application/json"));
   EXPECT_EQ("{\"reason\": \"Not authorized\"}", response->body());
 }
-TEST_P(ExtProcIntegrationTest, GetAndRespondImmediatelyWithLogging) {
-  ConfigOptions config_option = {};
-  config_option.add_logging_filter = true;
-  initializeConfig(config_option);
-  HttpIntegrationTest::initialize();
-  auto response = sendDownstreamRequest(absl::nullopt);
-
-  processAndRespondImmediately(*grpc_upstreams_[0], true, [](ImmediateResponse& immediate) {
-    immediate.mutable_status()->set_code(envoy::type::v3::StatusCode::Unauthorized);
-    immediate.set_body("{\"reason\": \"Not authorized\"}");
-    immediate.set_details("Failed because you are not authorized");
-    auto* hdr1 = immediate.mutable_headers()->add_set_headers();
-    hdr1->mutable_header()->set_key("x-failure-reason");
-    hdr1->mutable_header()->set_value("testing");
-    auto* hdr2 = immediate.mutable_headers()->add_set_headers();
-    hdr2->mutable_header()->set_key("content-type");
-    hdr2->mutable_header()->set_value("application/json");
-  });
-
-  verifyDownstreamResponse(*response, 401);
-  EXPECT_THAT(response->headers(), SingleHeaderValueIs("x-failure-reason", "testing"));
-  EXPECT_THAT(response->headers(), SingleHeaderValueIs("content-type", "application/json"));
-  EXPECT_EQ("{\"reason\": \"Not authorized\"}", response->body());
-}
 
 TEST_P(ExtProcIntegrationTest, GetAndRespondImmediatelyWithLogging) {
   ConfigOptions config_option = {};
