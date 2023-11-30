@@ -7,7 +7,6 @@
 #include "source/extensions/filters/http/ext_proc/mutation_utils.h"
 
 #include "absl/strings/str_format.h"
-#include <cstdio>
 
 #if defined(USE_CEL_PARSER)
 #include "parser/parser.h"
