@@ -1,22 +1,14 @@
-date: October 11, 2023
+date: Pending
 
 behavior_changes:
-- area: http
+# *Changes that are expected to cause an incompatibility if applicable; deployment changes are likely required*
+
+minor_behavior_changes:
+# *Changes that may cause incompatibilities for some users, but should not for most*
+- area: access_log
   change: |
-    Close HTTP/2 and HTTP/3 connections that prematurely reset streams. The runtime key
-    ``overload.premature_reset_min_stream_lifetime_seconds`` determines the interval where received stream
-    reset is considered premature (with 1 second default). The runtime key ``overload.premature_reset_total_stream_count``,
-    with the default value of 500, determines the number of requests received from a connection before the check for premature
-    resets is applied. The connection is disconnected if more than 50% of resets are premature.
-    Setting the runtime key ``envoy.restart_features.send_goaway_for_premature_rst_streams`` to ``false`` completely disables
-    this check.
-- area: http
-  change: |
-    Add runtime flag ``http.max_requests_per_io_cycle`` for setting the limit on the number of HTTP requests processed
-    from a single connection in a single I/O cycle. Requests over this limit are processed in subsequent I/O cycles. This
-    mitigates CPU starvation by connections that simultaneously send high number of requests by allowing requests from other
-    connections to make progress. This runtime value can be set to 1 in the presence of abusive HTTP/2 or HTTP/3 connections.
-    By default this limit is disabled.
+    When emitting grpc logs, only downstream filter state was used. Now, both downstream and upstream filter states will be tried
+    to find the keys configured in filter_state_objects_to_log.
 
 bug_fixes:
 # *Changes expected to improve the state of the world and are unlikely to have negative effects*
@@ -26,7 +18,6 @@ removed_config_or_runtime:
 
 new_features:
 - area: tap
-  change: |
     added :ref:`custom_sink <envoy_v3_api_field_config.tap.v3.OutputSink.custom_sink>` type to enable writing tap data
     out to a custom sink extension.
 

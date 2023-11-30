@@ -8,8 +8,6 @@ set -e
 export SRCDIR="${SRCDIR:-$PWD}"
 export ENVOY_SRCDIR="${ENVOY_SRCDIR:-$PWD}"
 
-# shellcheck source=ci/setup_cache.sh
-. "$(dirname "$0")"/setup_cache.sh
 # shellcheck source=ci/build_setup.sh
 . "$(dirname "$0")"/build_setup.sh
 
@@ -625,7 +623,7 @@ case $CI_TARGET in
         fi
         PLATFORMS="$(IFS=, ; echo "${_PLATFORMS[*]}")"
         export DOCKER_PLATFORM="$PLATFORMS"
-        if [[ -z "${DOCKERHUB_PASSWORD}" && "${#_PLATFORMS[@]}" -eq 1 ]]; then
+        if [[ -z "${DOCKERHUB_PASSWORD}" && "${#_PLATFORMS[@]}" -eq 1 && -z $ENVOY_DOCKER_SAVE_IMAGE ]]; then
             # if you are not pushing the images and there is only one platform
             # then load to Docker (ie local build)
             export DOCKER_LOAD_IMAGES=1
@@ -856,6 +854,12 @@ case $CI_TARGET in
            bazel-bin/test/tools/schema_validator/schema_validator_tool.stripped \
            "${ENVOY_BINARY_DIR}/schema_validator_tool"
         echo "Release files created in ${ENVOY_BINARY_DIR}"
+        ;;
+
+    release.server_only.binary)
+        setup_clang_toolchain
+        echo "bazel release build..."
+        bazel_envoy_binary_build release
         ;;
 
     release.signed)
