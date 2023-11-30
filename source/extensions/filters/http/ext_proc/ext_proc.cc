@@ -1,6 +1,5 @@
 #include "source/extensions/filters/http/ext_proc/ext_proc.h"
 
-#include <cstdio>
 #include "envoy/config/common/mutation_rules/v3/mutation_rules.pb.h"
 
 #include "source/common/http/utility.h"
