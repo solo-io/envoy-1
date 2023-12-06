@@ -22,7 +22,7 @@ Http::FilterFactoryCb ExternalProcessingFilterConfig::createFilterFactoryFromPro
   return [filter_config, grpc_service = proto_config.grpc_service(),
           &context](Http::FilterChainFactoryCallbacks& callbacks) {
     auto client = std::make_unique<ExternalProcessorClientImpl>(
-        context.clusterManager().grpcAsyncClientManager(), context.scope());
+        context.clusterManager().grpcAsyncClientManager(), context.scope(), callbacks.dispatcher().timeSource());
 
     callbacks.addStreamFilter(Http::StreamFilterSharedPtr{
         std::make_shared<Filter>(filter_config, std::move(client), grpc_service)});
@@ -51,7 +51,7 @@ ExternalProcessingFilterConfig::createFilterFactoryFromProtoWithServerContextTyp
   return [filter_config, grpc_service = proto_config.grpc_service(),
           &server_context](Http::FilterChainFactoryCallbacks& callbacks) {
     auto client = std::make_unique<ExternalProcessorClientImpl>(
-        server_context.clusterManager().grpcAsyncClientManager(), server_context.scope());
+        server_context.clusterManager().grpcAsyncClientManager(), server_context.scope(), server_context.mainThreadDispatcher().timeSource());
 
     callbacks.addStreamFilter(Http::StreamFilterSharedPtr{
         std::make_shared<Filter>(filter_config, std::move(client), grpc_service)});

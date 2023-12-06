@@ -24,7 +24,7 @@ using ProcessingResponsePtr = std::unique_ptr<ProcessingResponse>;
 
 class ExternalProcessorClientImpl : public ExternalProcessorClient {
 public:
-  ExternalProcessorClientImpl(Grpc::AsyncClientManager& client_manager, Stats::Scope& scope);
+  ExternalProcessorClientImpl(Grpc::AsyncClientManager& client_manager, Stats::Scope& scope, TimeSource& timesource);
 
   ExternalProcessorStreamPtr start(ExternalProcessorCallbacks& callbacks,
                                    const Grpc::GrpcServiceConfigWithHashKey& config_with_hash_key,
@@ -33,6 +33,7 @@ public:
 private:
   Grpc::AsyncClientManager& client_manager_;
   Stats::Scope& scope_;
+  TimeSource& timesource_;
 };
 
 class ExternalProcessorStreamImpl : public ExternalProcessorStream,
@@ -42,7 +43,7 @@ public:
   // Factory method: create and return `ExternalProcessorStreamPtr`; return nullptr on failure.
   static ExternalProcessorStreamPtr
   create(Grpc::AsyncClient<ProcessingRequest, ProcessingResponse>&& client,
-         ExternalProcessorCallbacks& callbacks, const StreamInfo::StreamInfo& stream_info);
+         ExternalProcessorCallbacks& callbacks, const StreamInfo::StreamInfo& stream_info, TimeSource& timesource);
 
   void send(ProcessingRequest&& request, bool end_stream) override;
   // Close the stream. This is idempotent and will return true if we
@@ -61,7 +62,7 @@ public:
 
 private:
   // Private constructor only can be invoked within this class.
-  ExternalProcessorStreamImpl(ExternalProcessorCallbacks& callbacks) : callbacks_(callbacks) {}
+  ExternalProcessorStreamImpl(ExternalProcessorCallbacks& callbacks, TimeSource& timesource) : callbacks_(callbacks), timesource_(timesource) {}
 
   // Start the gRPC async stream: It returns true if the start succeeded. Otherwise it returns false
   // if it failed to start.
@@ -72,6 +73,9 @@ private:
   Grpc::AsyncStream<ProcessingRequest> stream_;
   Http::AsyncClient::ParentContext grpc_context_;
   bool stream_closed_ = false;
+  TimeSource& timesource_;
+  uint64_t tx_timestamp_{};
+  uint64_t rx_timestamp_{};
 };
 
 } // namespace ExternalProcessing

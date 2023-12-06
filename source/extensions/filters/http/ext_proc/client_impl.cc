@@ -8,8 +8,8 @@ namespace ExternalProcessing {
 static constexpr char kExternalMethod[] = "envoy.service.ext_proc.v3.ExternalProcessor.Process";
 
 ExternalProcessorClientImpl::ExternalProcessorClientImpl(Grpc::AsyncClientManager& client_manager,
-                                                         Stats::Scope& scope)
-    : client_manager_(client_manager), scope_(scope) {}
+                                                         Stats::Scope& scope, TimeSource& timesource)
+    : client_manager_(client_manager), scope_(scope), timesource_(timesource) {}
 
 ExternalProcessorStreamPtr
 ExternalProcessorClientImpl::start(ExternalProcessorCallbacks& callbacks,
@@ -17,14 +17,14 @@ ExternalProcessorClientImpl::start(ExternalProcessorCallbacks& callbacks,
                                    const StreamInfo::StreamInfo& stream_info) {
   Grpc::AsyncClient<ProcessingRequest, ProcessingResponse> grpcClient(
       client_manager_.getOrCreateRawAsyncClientWithHashKey(config_with_hash_key, scope_, true));
-  return ExternalProcessorStreamImpl::create(std::move(grpcClient), callbacks, stream_info);
+  return ExternalProcessorStreamImpl::create(std::move(grpcClient), callbacks, stream_info, timesource_);
 }
 
 ExternalProcessorStreamPtr ExternalProcessorStreamImpl::create(
     Grpc::AsyncClient<ProcessingRequest, ProcessingResponse>&& client,
-    ExternalProcessorCallbacks& callbacks, const StreamInfo::StreamInfo& stream_info) {
+    ExternalProcessorCallbacks& callbacks, const StreamInfo::StreamInfo& stream_info, TimeSource& timesource) {
   auto stream =
-      std::unique_ptr<ExternalProcessorStreamImpl>(new ExternalProcessorStreamImpl(callbacks));
+      std::unique_ptr<ExternalProcessorStreamImpl>(new ExternalProcessorStreamImpl(callbacks, timesource));
 
   if (stream->startStream(std::move(client), stream_info)) {
     return stream;
@@ -48,6 +48,7 @@ bool ExternalProcessorStreamImpl::startStream(
 
 void ExternalProcessorStreamImpl::send(envoy::service::ext_proc::v3::ProcessingRequest&& request,
                                        bool end_stream) {
+  tx_timestamp_ = DateUtil::nowToMilliseconds(timesource_);
   stream_.sendMessage(std::move(request), end_stream);
 }
 
@@ -56,6 +57,7 @@ void ExternalProcessorStreamImpl::send(envoy::service::ext_proc::v3::ProcessingR
 bool ExternalProcessorStreamImpl::close() {
   if (!stream_closed_) {
     ENVOY_LOG(debug, "Closing gRPC stream");
+    ENVOY_LOG(debug, "ext_proc took {} ms", rx_timestamp_ - tx_timestamp_);
     stream_.closeStream();
     stream_closed_ = true;
     stream_.resetStream();
@@ -65,6 +67,7 @@ bool ExternalProcessorStreamImpl::close() {
 }
 
 void ExternalProcessorStreamImpl::onReceiveMessage(ProcessingResponsePtr&& response) {
+  rx_timestamp_ = DateUtil::nowToMilliseconds(timesource_);
   callbacks_.onReceiveMessage(std::move(response));
 }
 

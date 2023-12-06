@@ -658,18 +658,53 @@ void Filter::onReceiveMessage(std::unique_ptr<ProcessingResponse>&& r) {
   switch (response->response_case()) {
   case ProcessingResponse::ResponseCase::kRequestHeaders:
     processing_status = decoding_state_.handleHeadersResponse(response->request_headers());
+    if (decoding_state_.bodyMode() == envoy::extensions::filters::http::ext_proc::v3::ProcessingMode_BodySendMode_NONE &&
+        !decoding_state_.sendTrailers() &&
+        !encoding_state_.sendHeaders() &&
+        encoding_state_.bodyMode() == envoy::extensions::filters::http::ext_proc::v3::ProcessingMode_BodySendMode_NONE &&
+        !encoding_state_.sendTrailers()) {
+      processing_complete_ = true;
+      closeStream();
+      return;
+    }
     break;
   case ProcessingResponse::ResponseCase::kResponseHeaders:
     processing_status = encoding_state_.handleHeadersResponse(response->response_headers());
+    if (encoding_state_.bodyMode() == envoy::extensions::filters::http::ext_proc::v3::ProcessingMode_BodySendMode_NONE &&
+        !encoding_state_.sendTrailers()) {
+      processing_complete_ = true;
+      closeStream();
+      return;
+    }
     break;
   case ProcessingResponse::ResponseCase::kRequestBody:
     processing_status = decoding_state_.handleBodyResponse(response->request_body());
+    if (!decoding_state_.sendTrailers() &&
+        !encoding_state_.sendHeaders() &&
+        encoding_state_.bodyMode() == envoy::extensions::filters::http::ext_proc::v3::ProcessingMode_BodySendMode_NONE &&
+        !encoding_state_.sendTrailers()) {
+      processing_complete_ = true;
+      closeStream();
+      return;
+    }
     break;
   case ProcessingResponse::ResponseCase::kResponseBody:
     processing_status = encoding_state_.handleBodyResponse(response->response_body());
+    if (!encoding_state_.sendTrailers()) {
+      processing_complete_ = true;
+      closeStream();
+      return;
+    }
     break;
   case ProcessingResponse::ResponseCase::kRequestTrailers:
     processing_status = decoding_state_.handleTrailersResponse(response->request_trailers());
+    if (!encoding_state_.sendHeaders() &&
+        encoding_state_.bodyMode() == envoy::extensions::filters::http::ext_proc::v3::ProcessingMode_BodySendMode_NONE &&
+        !encoding_state_.sendTrailers()) {
+      processing_complete_ = true;
+      closeStream();
+      return;
+    }
     break;
   case ProcessingResponse::ResponseCase::kResponseTrailers:
     processing_status = encoding_state_.handleTrailersResponse(response->response_trailers());
