@@ -21,5 +21,12 @@ new_features:
     Added an off-by-default runtime flag
     ``envoy.reloadable_features.google_grpc_disable_tls_13`` to disable TLSv1.3
     usage by gRPC SDK for ``google_grpc`` services.
+- area: ext_proc
+  change: |
+    implemented
+    :ref:`request_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.request_attributes>`
+    and
+    :ref:`response_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.response_attributes>`
+    config APIs to enable sending and receiving attributes to/from the external processing server.
 
 deprecated:
