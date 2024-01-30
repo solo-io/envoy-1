@@ -28,5 +28,13 @@ new_features:
     and
     :ref:`response_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.response_attributes>`
     config APIs to enable sending and receiving attributes to/from the external processing server.
+- area: ext_proc
+  change: |
+    added
+    :ref:`metadata_options <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.metadata_options>`
+    config API to enable sending and receiving metadata from/to the external processing server. Both typed and untyped dynamic
+    metadata may be sent to the server. If
+    :ref:`receiving_namespaces <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.MetadataOptions.receiving_namespaces>`
+    is defined, returned metadata may be written to the specified allowed namespaces.
 
 deprecated:
