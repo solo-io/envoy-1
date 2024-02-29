@@ -327,8 +327,6 @@ FilterHeadersStatus Filter::decodeHeaders(RequestHeaderMap& headers, bool end_st
     ENVOY_LOG(trace, "decodeHeaders: Skipped header processing");
   }
 
-  const auto status = onHeaders(decoding_state_, headers, end_stream);
-  ENVOY_LOG(trace, "decodeHeaders returning {}", static_cast<int>(status));
   return status;
 }
 
@@ -604,8 +602,6 @@ FilterHeadersStatus Filter::encodeHeaders(ResponseHeaderMap& headers, bool end_s
     ENVOY_LOG(trace, "encodeHeaders: Skipped header processing");
   }
 
-  const auto status = onHeaders(encoding_state_, headers, end_stream);
-  ENVOY_LOG(trace, "encodeHeaders returns {}", static_cast<int>(status));
   return status;
 }
 
@@ -756,8 +752,8 @@ void Filter::addAttributes(ProcessorState& state, ProcessingRequest& req) {
   }
 
   auto activation_ptr = Filters::Common::Expr::createActivation(
-      &config_->expressionManager().localInfo(), state.callbacks()->streamInfo(),
-      state.requestHeaders(), dynamic_cast<const Http::ResponseHeaderMap*>(state.responseHeaders()),
+      state.callbacks()->streamInfo(), state.requestHeaders(),
+      dynamic_cast<const Http::ResponseHeaderMap*>(state.responseHeaders()),
       dynamic_cast<const Http::ResponseTrailerMap*>(state.responseTrailers()));
   auto attributes = state.evaluateAttributes(config_->expressionManager(), *activation_ptr);
 
