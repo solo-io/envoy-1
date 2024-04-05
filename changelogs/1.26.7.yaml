@@ -1,18 +1,6 @@
-date: April 4, 2024
+date: February 9, 2024
 
 bug_fixes:
-- area: http2
-  change: |
-    Update nghttp2 to resolve CVE-2024-30255 (https://github.com/envoyproxy/envoy/security/advisories/GHSA-j654-3ccm-vfmm).
-
-new_features:
-- area: google_grpc
-  change: |
-    Added an off-by-default runtime flag
-    ``envoy.reloadable_features.google_grpc_disable_tls_13`` to disable TLSv1.3
-    usage by gRPC SDK for ``google_grpc`` services.
-
-    fixed a bug where handshake may fail when both private key provider and cert validation are set.
 - area: buffer
   change: |
     Fixed a bug (https://github.com/envoyproxy/envoy/issues/28760) that the internal listener causes an undefined
@@ -38,14 +26,3 @@ new_features:
 - area: url matching
   change: |
     Fixed excessive CPU utilization when using regex URL template matcher.
-
-removed_config_or_runtime:
-# *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`
-
-new_features:
-- area: tap
-  change: |
-    added :ref:`custom_sink <envoy_v3_api_field_config.tap.v3.OutputSink.custom_sink>` type to enable writing tap data
-    out to a custom sink extension.
-
-deprecated:
