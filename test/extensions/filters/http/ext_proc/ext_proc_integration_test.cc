@@ -66,8 +66,18 @@ protected:
     cleanupUpstreamAndDownstream();
   }
 
-  void initializeConfig() {
-    config_helper_.addConfigModifier([this](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
+  void initializeConfig(ConfigOptions config_option = {}) {
+    scoped_runtime_.mergeValues(
+        {{"envoy.reloadable_features.send_header_raw_value", header_raw_value_}});
+    scoped_runtime_.mergeValues(
+        {{"envoy_reloadable_features_immediate_response_use_filter_mutation_rule",
+          filter_mutation_rule_}});
+    scoped_runtime_.mergeValues(
+        {{"envoy_reloadable_features_ext_proc_disable_response_processing_on_local_reply",
+          disable_on_local_reply_}});
+
+    config_helper_.addConfigModifier([this, config_option](
+                                         envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
       // Ensure "HTTP2 with no prior knowledge." Necessary for gRPC and for headers
       ConfigHelper::setHttp2(
           *(bootstrap.mutable_static_resources()->mutable_clusters()->Mutable(0)));
@@ -360,6 +370,8 @@ protected:
   std::vector<FakeUpstream*> grpc_upstreams_;
   FakeHttpConnectionPtr processor_connection_;
   FakeStreamPtr processor_stream_;
+  std::string filter_mutation_rule_{"false"};
+  std::string disable_on_local_reply_{"false"};
 };
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1956,5 +1968,48 @@ TEST_P(ExtProcIntegrationTest, RequestMessageNewTimeoutNegativeTestTimeoutTooBig
 TEST_P(ExtProcIntegrationTest, RequestMessageNewTimeoutNegativeTestTimeoutNotAcceptedDefaultMax) {
   newTimeoutWrongConfigTest(500);
 }
+
+#if defined(USE_CEL_PARSER)
+// Test the filter using the default configuration by connecting to
+// an ext_proc server that responds to the request_headers message
+// by requesting to modify the request headers.
+TEST_P(ExtProcIntegrationTest, GetAndSetRequestResponseAttributes) {
+  proto_config_.mutable_processing_mode()->set_request_header_mode(ProcessingMode::SEND);
+  proto_config_.mutable_processing_mode()->set_response_header_mode(ProcessingMode::SEND);
+  proto_config_.mutable_request_attributes()->Add("request.path");
+  proto_config_.mutable_request_attributes()->Add("request.method");
+  proto_config_.mutable_request_attributes()->Add("request.scheme");
+  proto_config_.mutable_request_attributes()->Add("connection.mtls");
+  proto_config_.mutable_response_attributes()->Add("response.code");
+  proto_config_.mutable_response_attributes()->Add("response.code_details");
+
+  initializeConfig();
+  HttpIntegrationTest::initialize();
+  auto response = sendDownstreamRequest(absl::nullopt);
+  processRequestHeadersMessage(
+      *grpc_upstreams_[0], true, [](const HttpHeaders& req, HeadersResponse&) {
+        EXPECT_EQ(req.attributes().size(), 1);
+        auto proto_struct = req.attributes().at("envoy.filters.http.ext_proc");
+        EXPECT_EQ(proto_struct.fields().at("request.path").string_value(), "/");
+        EXPECT_EQ(proto_struct.fields().at("request.method").string_value(), "GET");
+        EXPECT_EQ(proto_struct.fields().at("request.scheme").string_value(), "http");
+        EXPECT_EQ(proto_struct.fields().at("connection.mtls").bool_value(), false);
+        return true;
+      });
+
+  handleUpstreamRequest();
+
+  processResponseHeadersMessage(
+      *grpc_upstreams_[0], false, [](const HttpHeaders& req, HeadersResponse&) {
+        EXPECT_EQ(req.attributes().size(), 1);
+        auto proto_struct = req.attributes().at("envoy.filters.http.ext_proc");
+        EXPECT_EQ(proto_struct.fields().at("response.code").string_value(), "200");
+        EXPECT_EQ(proto_struct.fields().at("response.code_details").string_value(), "via_upstream");
+        return true;
+      });
+
+  verifyDownstreamResponse(*response, 200);
+}
+#endif
 
 } // namespace Envoy

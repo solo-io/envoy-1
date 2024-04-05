@@ -30,6 +30,12 @@ envoy_extension_cc_test(
     name = "filter_test",
     size = "small",
     srcs = ["filter_test.cc"],
+    copts = select({
+        "//bazel:windows_x86_64": [],
+        "//conditions:default": [
+            "-DUSE_CEL_PARSER",
+        ],
+    }),
     extension_names = ["envoy.filters.http.ext_proc"],
     deps = [
         ":mock_server_lib",
@@ -49,6 +55,7 @@ envoy_extension_cc_test(
         "//test/mocks/runtime:runtime_mocks",
         "//test/mocks/server:factory_context_mocks",
         "//test/mocks/server:overload_manager_mocks",
+        "//test/proto:helloworld_proto_cc_proto",
         "//test/test_common:test_runtime_lib",
         "@envoy_api//envoy/config/core/v3:pkg_cc_proto",
         "@envoy_api//envoy/service/ext_proc/v3:pkg_cc_proto",
@@ -115,6 +122,12 @@ envoy_extension_cc_test(
     name = "ext_proc_integration_test",
     size = "large",  # This test can take a while under tsan.
     srcs = ["ext_proc_integration_test.cc"],
+    copts = select({
+        "//bazel:windows_x86_64": [],
+        "//conditions:default": [
+            "-DUSE_CEL_PARSER",
+        ],
+    }),
     extension_names = ["envoy.filters.http.ext_proc"],
     shard_count = 2,
     tags = [
@@ -135,6 +148,12 @@ envoy_extension_cc_test(
     name = "streaming_integration_test",
     size = "large",
     srcs = ["streaming_integration_test.cc"],
+    copts = select({
+        "//bazel:windows_x86_64": [],
+        "//conditions:default": [
+            "-DUSE_CEL_PARSER",
+        ],
+    }),
     extension_names = ["envoy.filters.http.ext_proc"],
     tags = [
         "cpu:3",
