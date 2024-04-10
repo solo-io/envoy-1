@@ -1,37 +1,18 @@
-date: March 7, 2024
+date: April 4, 2024
 
 behavior_changes:
+- area: http
+  change: |
+    Remove the hop by hop TE header from downstream request headers if it's not set to ``trailers``, else keep it. This change can be
+    temporarily reverted by setting ``envoy.reloadable_features.sanitize_te`` to false.
+
+minor_behavior_changes:
 - area: http2
   change: |
-    Changes the default value of ``envoy.reloadable_features.http2_use_oghttp2`` to ``false``. This changes the codec used for HTTP/2
-    requests and responses. A number of users have reported issues with oghttp2 including issue 32611 and issue 32401 This behavior
-    can be reverted by setting the feature to ``true``.
+    Simplifies integration with the codec by removing translation between nghttp2 callbacks and Http2VisitorInterface events.
+    Guarded by ``envoy.reloadable_features.http2_skip_callback_visitor``.
 
 bug_fixes:
-- area: jwt_authn
+- area: http2
   change: |
-    Fixed JWT extractor, which concatenated headers with a comma, resultig in invalid tokens.
-
-new_features:
-- area: google_grpc
-  change: |
-    Added an off-by-default runtime flag
-    ``envoy.reloadable_features.google_grpc_disable_tls_13`` to disable TLSv1.3
-    usage by gRPC SDK for ``google_grpc`` services.
-- area: ext_proc
-  change: |
-    implemented
-    :ref:`request_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.request_attributes>`
-    and
-    :ref:`response_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.response_attributes>`
-    config APIs to enable sending and receiving attributes to/from the external processing server.
-- area: ext_proc
-  change: |
-    added
-    :ref:`metadata_options <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.metadata_options>`
-    config API to enable sending and receiving metadata from/to the external processing server. Both typed and untyped dynamic
-    metadata may be sent to the server. If
-    :ref:`receiving_namespaces <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.MetadataOptions.receiving_namespaces>`
-    is defined, returned metadata may be written to the specified allowed namespaces.
-
-deprecated:
+    Update nghttp2 to resolve (CVE-2024-30255 https://github.com/envoyproxy/envoy/security/advisories/GHSA-j654-3ccm-vfmm).
