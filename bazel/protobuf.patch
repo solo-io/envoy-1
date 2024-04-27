@@ -173,3 +173,26 @@ index 1c6a24945..c27d0bf2a 100644
  #if PROTOBUF_ENABLE_DEBUG_LOGGING_MAY_LEAK_PII
  #define PROTOBUF_DEBUG true
  #else
+diff --git a/src/google/protobuf/map_field.h b/src/google/protobuf/map_field.h
+index 70b12b1e7..1f3daaaee 100644
+--- a/src/google/protobuf/map_field.h
++++ b/src/google/protobuf/map_field.h
+@@ -301,15 +301,15 @@ struct hash<::PROTOBUF_NAMESPACE_ID::MapKey> {
+       }
+       case ::PROTOBUF_NAMESPACE_ID::FieldDescriptor::CPPTYPE_INT32: {
+         auto value = map_key.GetInt32Value();
+-        return hash<decltype(value)>()(map_key.GetInt32Value());
++        return hash<decltype(value)>()(value);
+       }
+       case ::PROTOBUF_NAMESPACE_ID::FieldDescriptor::CPPTYPE_UINT64: {
+         auto value = map_key.GetUInt64Value();
+-        return hash<decltype(value)>()(map_key.GetUInt64Value());
++        return hash<decltype(value)>()(value);
+       }
+       case ::PROTOBUF_NAMESPACE_ID::FieldDescriptor::CPPTYPE_UINT32: {
+         auto value = map_key.GetUInt32Value();
+-        return hash<decltype(value)>()(map_key.GetUInt32Value());
++        return hash<decltype(value)>()(value);
+       }
+       case ::PROTOBUF_NAMESPACE_ID::FieldDescriptor::CPPTYPE_BOOL: {
+         return hash<bool>()(map_key.GetBoolValue());
