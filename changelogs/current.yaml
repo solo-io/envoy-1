@@ -13,5 +13,97 @@ removed_config_or_runtime:
 # *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`
 
 new_features:
+- area: google_grpc
+  change: |
+    Fixed recursion when HTTP connection is disconnected due to a high number of premature resets.
+- area: grpc
+  change: |
+    Fixed a bug in gRPC async client cache which intermittently causes CPU spikes due to busy loop in timer expiration.
+- area: tracing
+  change: |
+    Fixed a bug where Datadog spans tagged as errors would not have the appropriate error property set.
+- area: tracing
+  change: |
+    Fixed a bug where child spans produced by the Datadog tracer would have an incorrect operation name.
+- area: tracing
+  change: |
+    Fixed a bug that caused the Datadog tracing extension to drop traces that
+    should be kept on account of an extracted sampling decision.
+- area: proxy protocol
+  change: |
+    fixed a crash when Envoy is configured for PROXY protocol on both a listener and cluster, and the listener receives
+    a PROXY protocol header with address type LOCAL (typically used for health checks).
+- area: proxy_protocol
+  change: |
+    Fix crash due to uncaught exception when the operating system does not support an address type (such as IPv6) that is
+    received in a proxy protocol header. Connections will instead be dropped/reset.
+- area: proxy_protocol
+  change: |
+    Fixed a bug where TLVs with non utf8 characters were inserted as protobuf values into filter metadata circumventing
+    ext_authz checks when ``failure_mode_allow`` is set to ``true``.
+- area: tls
+  change: |
+    Fix crash due to uncaught exception when the operating system does not support an address type (such as IPv6) that is
+    received in an mTLS client cert IP SAN. These SANs will be ignored. This applies only when using formatter
+    ``%DOWNSTREAM_PEER_IP_SAN%``.
+- area: http
+  change: |
+    Fixed crash when HTTP request idle and per try timeouts occurs within backoff interval.
+- area: url matching
+  change: |
+    Fixed excessive CPU utilization when using regex URL template matcher.
+
+removed_config_or_runtime:
+# *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`
+
+new_features:
+- area: tap
+  change: |
+    added :ref:`custom_sink <envoy_v3_api_field_config.tap.v3.OutputSink.custom_sink>` type to enable writing tap data
+    out to a custom sink extension.
+- area: access_log
+  change: |
+    added %RESPONSE_FLAGS_LONG% substitution string, that will output a pascal case string representing the resonse flags.
+    The output response flags will correspond with %RESPONSE_FLAGS%, only with a long textual string representation.
+- area: config
+  change: |
+    Added the capability to defer broadcasting of certain cluster (CDS, EDS) to
+    worker threads from the main thread. This optimization can save significant
+    amount of memory in cases where there are (1) a large number of workers and
+    (2) a large amount of config, most of which is unused. This capability is
+    guarded by :ref:`enable_deferred_cluster_creation
+    <envoy_v3_api_field_config.bootstrap.v3.ClusterManager.enable_deferred_cluster_creation>`.
+- area: extension_discovery_service
+  change: |
+    added ECDS support for :ref:` downstream network filters<envoy_v3_api_field_config.listener.v3.Filter.config_discovery>`.
+- area: ext_proc
+  change: |
+    added
+    :ref:`disable_immediate_response <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.disable_immediate_response>`
+    config API to ignore the
+    :ref:`immediate_response <envoy_v3_api_field_service.ext_proc.v3.ProcessingResponse.immediate_response>`
+    message from the external processing server.
+- area: http
+  change: |
+    added :ref:`Json-To-Metadata filter <envoy_v3_api_msg_extensions.filters.http.json_to_metadata.v3.JsonToMetadata>`.
+- area: extension_discovery_service
+  change: |
+    added metric listener.listener_stat.network_extension_config_missing to track closed connections due to missing config.
+- area: redis
+  change: |
+    added support for time command (returns a local response).
+- area: redis
+  change: |
+    Provide initial span attributes to a sampler used in the OpenTelemetry tracer.
+- area: ext_proc
+  change: |
+    implemented
+    :ref:`request_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.request_attributes>`
+    and
+    :ref:`response_attributes <envoy_v3_api_field_extensions.filters.http.ext_proc.v3.ExternalProcessor.response_attributes>`
+    config APIs to enable sending and receiving attributes from/to the external processing server.
 
 deprecated:
+    Added an off-by-default runtime flag
+    ``envoy.reloadable_features.google_grpc_disable_tls_13`` to disable TLSv1.3
+    usage by gRPC SDK for ``google_grpc`` services.
