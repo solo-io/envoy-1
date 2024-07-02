@@ -15,6 +15,10 @@ bug_fixes:
 - area: http
   change: |
     Fixed recursion when HTTP connection is disconnected due to a high number of premature resets.
+- area: async http client
+  change: |
+    Added one option to disable the response body buffering for mirror request. Also introduced a 32MB cap for the response
+    buffer, which can be changed by the runtime flag ``http.async_response_buffer_limit`` based on the product needs.
 
 removed_config_or_runtime:
 # *Normally occurs at the end of the* :ref:`deprecation period <deprecated>`

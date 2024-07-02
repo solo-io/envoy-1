@@ -49,6 +49,8 @@ namespace {
 // Limit the size of buffer for data used for retries.
 // This is currently fixed to 64KB.
 constexpr uint64_t kBufferLimitForRetry = 1 << 16;
+// Response buffer limit 32MB.
+constexpr uint64_t kBufferLimitForResponse = 32 * 1024 * 1024;
 } // namespace
 
 class AsyncStreamImpl;
@@ -68,12 +70,14 @@ public:
                 const AsyncClient::RequestOptions& options) override;
   Stream* start(StreamCallbacks& callbacks, const AsyncClient::StreamOptions& options) override;
   Event::Dispatcher& dispatcher() override { return dispatcher_; }
+  static const absl::string_view ResponseBufferLimit;
 
 private:
   Upstream::ClusterInfoConstSharedPtr cluster_;
   Router::FilterConfig config_;
   Event::Dispatcher& dispatcher_;
   std::list<std::unique_ptr<AsyncStreamImpl>> active_streams_;
+  Runtime::Loader& runtime_;
   Singleton::Manager& singleton_manager_;
 
   friend class AsyncStreamImpl;
@@ -87,7 +91,7 @@ private:
 class AsyncStreamImpl : public AsyncClient::Stream,
                         public StreamDecoderFilterCallbacks,
                         public Event::DeferredDeletable,
-                        Logger::Loggable<Logger::Id::http>,
+                        public Logger::Loggable<Logger::Id::http>,
                         public LinkedObject<AsyncStreamImpl>,
                         public ScopeTrackedObject {
 public:
@@ -108,6 +112,7 @@ protected:
   StreamInfo::StreamInfoImpl& streamInfo() override { return stream_info_; }
 
   AsyncClientImpl& parent_;
+  const bool discard_response_body_;
 
 private:
   struct NullHedgePolicy : public Router::HedgePolicy {
@@ -498,6 +503,8 @@ private:
   std::unique_ptr<ResponseMessageImpl> response_;
   bool cancelled_{};
   Tracing::SpanPtr child_span_;
+  bool response_buffer_overlimit_{};
+  const uint64_t response_buffer_limit_;
 
   friend class AsyncClientImpl;
 };

@@ -42,7 +42,9 @@ public:
    */
   enum class FailureReason {
     // The stream has been reset.
-    Reset
+    Reset,
+    // The stream exceeds the response buffer limit.
+    ExceedResponseBufferLimit
   };
 
   /**
@@ -231,6 +233,11 @@ public:
       return *this;
     }
 
+    StreamOptions& setDiscardResponseBody(bool discard) {
+      discard_response_body = discard;
+      return *this;
+    }
+
     // For gmock test
     bool operator==(const StreamOptions& src) const {
       return timeout == src.timeout && buffer_body_for_retry == src.buffer_body_for_retry &&
@@ -263,6 +270,7 @@ public:
     OptRef<Router::FilterConfig> filter_config_;
 
     bool is_shadow{false};
+    bool discard_response_body{false};
   };
 
   /**
@@ -316,6 +324,10 @@ public:
     }
     RequestOptions& setSampled(absl::optional<bool> sampled) {
       sampled_ = sampled;
+      return *this;
+    }
+    RequestOptions& setDiscardResponseBody(bool discard) {
+      discard_response_body = discard;
       return *this;
     }
 
