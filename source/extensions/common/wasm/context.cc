@@ -1831,8 +1831,9 @@ void Context::onHttpCallFailure(uint32_t token, Http::AsyncClient::FailureReason
     return;
   }
   status_code_ = static_cast<uint32_t>(WasmResult::BrokenConnection);
-  // This is the only value currently.
-  ASSERT(reason == Http::AsyncClient::FailureReason::Reset);
+  // TODO(botengyao): handle different failure reasons.
+  ASSERT(reason == Http::AsyncClient::FailureReason::Reset ||
+         reason == Http::AsyncClient::FailureReason::ExceedResponseBufferLimit);
   status_message_ = "reset";
   onHttpCallResponse(token, 0, 0, 0);
   status_message_ = "";

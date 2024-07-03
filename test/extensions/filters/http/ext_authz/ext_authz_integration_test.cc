@@ -494,7 +494,9 @@ public:
         ext_authz_request_->headers().get(Http::LowerCaseString(std::string("x-duplicate")));
     EXPECT_EQ(1, duplicate.size());
     EXPECT_EQ("one,two,three", duplicate[0]->value().getStringView());
+  }
 
+  void sendExtAuthzResponse() {
     // Send back authorization response with "baz" and "bat" headers.
     // Also add multiple values "append-foo" and "append-bar" for key "x-append-bat".
     // Also tell Envoy to remove "remove-me" header before sending to upstream.
@@ -519,13 +521,14 @@ public:
     cleanupUpstreamAndDownstream();
   }
 
-  void initializeConfig() {
-    config_helper_.addConfigModifier([this](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
+  void initializeConfig(bool failure_mode_allow = true) {
+    config_helper_.addConfigModifier([this, failure_mode_allow](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
       auto* ext_authz_cluster = bootstrap.mutable_static_resources()->add_clusters();
       ext_authz_cluster->MergeFrom(bootstrap.static_resources().clusters()[0]);
       ext_authz_cluster->set_name("ext_authz");
 
       TestUtility::loadFromYaml(default_config_, proto_config_);
+      proto_config_.set_failure_mode_allow(failure_mode_allow);
       envoy::config::listener::v3::Filter ext_authz_filter;
       ext_authz_filter.set_name("envoy.filters.http.ext_authz");
       ext_authz_filter.mutable_typed_config()->PackFrom(proto_config_);
@@ -541,6 +544,7 @@ public:
 
     initiateClientConnection();
     waitForExtAuthzRequest();
+    sendExtAuthzResponse();
 
     AssertionResult result =
         fake_upstreams_[0]->waitForHttpConnection(*dispatcher_, fake_upstream_connection_);
@@ -800,10 +804,37 @@ TEST_P(ExtAuthzHttpIntegrationTest, DirectReponse) {
   HttpIntegrationTest::initialize();
   initiateClientConnection();
   waitForExtAuthzRequest();
+  sendExtAuthzResponse();
 
   ASSERT_TRUE(response_->waitForEndStream());
   EXPECT_TRUE(response_->complete());
   EXPECT_EQ("204", response_->headers().Status()->value().getStringView());
+}
+
+// Test exceeding the async client buffer limit.
+TEST_P(ExtAuthzHttpIntegrationTest, ErrorReponseWithDefultBufferLimit) {
+  initializeConfig(/*failure_mode_allow=*/false);
+  config_helper_.addRuntimeOverride("http.async_response_buffer_limit", "1024");
+
+  HttpIntegrationTest::initialize();
+  initiateClientConnection();
+  waitForExtAuthzRequest();
+
+  Http::TestResponseHeaderMapImpl response_headers{
+      {":status", "200"},
+      {"baz", "baz"},
+      {"bat", "bar"},
+      {"x-append-bat", "append-foo"},
+      {"x-append-bat", "append-bar"},
+      {"x-envoy-auth-headers-to-remove", "remove-me"},
+  };
+  ext_authz_request_->encodeHeaders(response_headers, false);
+  ext_authz_request_->encodeData(2048, true);
+
+  ASSERT_TRUE(response_->waitForEndStream());
+  EXPECT_TRUE(response_->complete());
+  // A forbidden response since the onFailure is called due to the async client buffer limit.
+  EXPECT_EQ("403", response_->headers().Status()->value().getStringView());
 }
 
 TEST_P(ExtAuthzHttpIntegrationTest, RedirectResponse) {
@@ -820,6 +851,7 @@ TEST_P(ExtAuthzHttpIntegrationTest, RedirectResponse) {
   HttpIntegrationTest::initialize();
   initiateClientConnection();
   waitForExtAuthzRequest();
+  sendExtAuthzResponse();
 
   ASSERT_TRUE(response_->waitForEndStream());
   EXPECT_TRUE(response_->complete());

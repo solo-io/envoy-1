@@ -30,6 +30,7 @@ const AsyncStreamImpl::NullPathMatchCriterion
 const absl::optional<envoy::config::route::v3::RouteAction::UpgradeConfig::ConnectConfig>
     AsyncStreamImpl::RouteEntryImpl::connect_config_nullopt_;
 const std::list<LowerCaseString> AsyncStreamImpl::NullConfig::internal_only_headers_;
+const absl::string_view AsyncClientImpl::ResponseBufferLimit = "http.async_response_buffer_limit";
 
 AsyncClientImpl::AsyncClientImpl(Upstream::ClusterInfoConstSharedPtr cluster,
                                  Stats::Store& stats_store, Event::Dispatcher& dispatcher,
@@ -42,7 +43,8 @@ AsyncClientImpl::AsyncClientImpl(Upstream::ClusterInfoConstSharedPtr cluster,
       config_(http_context.asyncClientStatPrefix(), local_info, stats_store, cm, runtime, random,
               std::move(shadow_writer), true, false, false, false, false, {},
               dispatcher.timeSource(), http_context, router_context),
-      dispatcher_(dispatcher), singleton_manager_(cm.clusterManagerFactory().singletonManager()) {}
+      dispatcher_(dispatcher), singleton_manager_(cm.clusterManagerFactory().singletonManager()),
+      runtime_(runtime) {}
 
 AsyncClientImpl::~AsyncClientImpl() {
   while (!active_streams_.empty()) {
@@ -77,7 +79,8 @@ AsyncClient::Stream* AsyncClientImpl::start(AsyncClient::StreamCallbacks& callba
 
 AsyncStreamImpl::AsyncStreamImpl(AsyncClientImpl& parent, AsyncClient::StreamCallbacks& callbacks,
                                  const AsyncClient::StreamOptions& options)
-    : parent_(parent), stream_callbacks_(callbacks), stream_id_(parent.config_.random_.random()),
+    : parent_(parent), discard_response_body_(options.discard_response_body),
+      stream_callbacks_(callbacks), stream_id_(parent.config_.random_.random()),
       router_(parent.config_),
       stream_info_(Protocol::Http11, parent.dispatcher().timeSource(), nullptr),
       tracing_config_(Tracing::EgressConfig::get()),
@@ -251,7 +254,9 @@ void AsyncStreamImpl::resetStream() {
 AsyncRequestImpl::AsyncRequestImpl(RequestMessagePtr&& request, AsyncClientImpl& parent,
                                    AsyncClient::Callbacks& callbacks,
                                    const AsyncClient::RequestOptions& options)
-    : AsyncStreamImpl(parent, *this, options), request_(std::move(request)), callbacks_(callbacks) {
+    : AsyncStreamImpl(parent, *this, options), request_(std::move(request)), callbacks_(callbacks),
+      response_buffer_limit_(parent.runtime_.snapshot().getInteger(
+          AsyncClientImpl::ResponseBufferLimit, kBufferLimitForResponse)) {
   if (nullptr != options.parent_span_) {
     const std::string child_span_name =
         options.child_span_name_.empty()
@@ -297,8 +302,23 @@ void AsyncRequestImpl::onHeaders(ResponseHeaderMapPtr&& headers, bool) {
 }
 
 void AsyncRequestImpl::onData(Buffer::Instance& data, bool) {
+  if (discard_response_body_) {
+    data.drain(data.length());
+    return;
+  }
+
   streamInfo().addBytesReceived(data.length());
   response_->body().move(data);
+
+  if (response_->body().length() + data.length() > response_buffer_limit_) {
+    ENVOY_LOG_EVERY_POW_2(warn, "the buffer size limit for async client response body "
+                                "has been exceeded, draining data");
+    data.drain(data.length());
+    response_buffer_overlimit_ = true;
+    reset();
+  } else {
+    response_->body().move(data);
+  }
 }
 
 void AsyncRequestImpl::onTrailers(ResponseTrailerMapPtr&& trailers) {
@@ -321,8 +341,12 @@ void AsyncRequestImpl::onReset() {
       remoteClosed() ? response_->trailers() : nullptr, streamInfo(), Tracing::EgressConfig::get());
 
   if (!cancelled_) {
-    // In this case we don't have a valid response so we do need to raise a failure.
-    callbacks_.onFailure(*this, AsyncClient::FailureReason::Reset);
+    if (response_buffer_overlimit_) {
+      callbacks_.onFailure(*this, AsyncClient::FailureReason::ExceedResponseBufferLimit);
+    } else {
+      // In this case we don't have a valid response so we do need to raise a failure.
+      callbacks_.onFailure(*this, AsyncClient::FailureReason::Reset);
+    }
   }
 }
 
