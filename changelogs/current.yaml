@@ -1,8 +1,9 @@
-date: June 4, 2024
+date: June 28, 2024
 
 bug_fixes:
-- area: router
+- area: http
   change: |
+<<<<<<< HEAD
     Fix a timing issue when upstream requests are empty when decoding data and send local reply when that happends. This is
     controlled by ``envoy_reloadable_features_send_local_reply_when_no_buffer_and_upstream_request``.
 - area: quic
@@ -123,3 +124,7 @@ deprecated:
     Added an off-by-default runtime flag
     ``envoy.reloadable_features.google_grpc_disable_tls_13`` to disable TLSv1.3
     usage by gRPC SDK for ``google_grpc`` services.
+=======
+    Fixed a bug where additional :ref:`cookie attributes <envoy_v3_api_msg_config.route.v3.RouteAction.HashPolicy.cookie>`
+    are not sent properly to clients.
+>>>>>>> fork/v1.27.7
