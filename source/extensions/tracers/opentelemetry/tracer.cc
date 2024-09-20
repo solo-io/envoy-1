@@ -53,6 +53,8 @@ void Span::finishSpan() {
   }
 }
 
+void Span::setOperation(absl::string_view operation) { span_.set_name(operation); };
+
 void Span::injectContext(Tracing::TraceContext& trace_context,
                          const Upstream::HostDescriptionConstSharedPtr&) {
   std::string trace_id_hex = absl::BytesToHexString(span_.trace_id());

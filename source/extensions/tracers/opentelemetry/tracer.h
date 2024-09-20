@@ -75,7 +75,7 @@ public:
        Envoy::TimeSource& time_source, Tracer& parent_tracer);
 
   // Tracing::Span functions
-  void setOperation(absl::string_view /*operation*/) override{};
+  void setOperation(absl::string_view /*operation*/) override;
   void setTag(absl::string_view /*name*/, absl::string_view /*value*/) override;
   void log(SystemTime /*timestamp*/, const std::string& /*event*/) override{};
   void finishSpan() override;
@@ -99,6 +99,11 @@ public:
   void setBaggage(absl::string_view /*key*/, absl::string_view /*value*/) override{};
 
   // Additional methods
+
+  /**
+   * @return the operation name set on the span
+   */
+  std::string name() const { return span_.name(); }
 
   /**
    * Sets the span's trace id attribute.
